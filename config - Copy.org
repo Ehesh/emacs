@@ -3,24 +3,7 @@
 #+DESCRIPTION: DT's personal Emacs config.
 #+STARTUP: showeverything
 #+OPTIONS: toc:3
-
-After years of trying to use emacs and failing, part of which is that I could not get the nag of it, the other part that I would get very frustrated as it did not work so good with windows, I am trying once more to find my way here. This is my config. I have always hessitated to all myself a programmer. Instead, I am more of a tinkerer, and this is my current playground. This is my frankenstein of a config taken from here and there. Some are just direct copy and paste from the repos. The base is made by Derek Taylor's config that was then absorbed to the Xero Linux distro configurations. From there I ran into Minimal Emacs on Reddit and thought about implementing it. Gotta say, I feel quite proud of myself for getting this far. I have also taken portions Kristoffer Balintona's articles chi-xigua's PovertEmacs. I also wanted to implement Marie-Hélène Burle's suggestion's on a youtube video from WestDRI.  
-
-
-DT's gitlab repo: https://gitlab.com/dwt1/dotfiles
-Xero Linux: https://github.com/xerolinux/eMacs-Config
-Minimal Emacs: https://github.com/jamescherti/minimal-emacs.d
-Kristoffer Balintona: https://kristofferbalintona.me/
-Marie-Hélène Burle: https://www.youtube.com/watch?v=SOxlQ7ogplA&t
-PovertEmacs: https://codeberg.org/chi-xigua/PovertEmacs#headline-79
-
-
-TODO implement Helix-style modal keybindings with Meow
-
-TODO at some point I need to document the packages better so they link to their own repo's and comment things arround.
-
-
-
+ 
 * Table of contents :toc:
 - [[#auto-tangle-configuration][Auto-Tangle Configuration]]
 - [[#pre-early-init-configuration][Pre-Early-Init Configuration]]
@@ -39,6 +22,7 @@ TODO at some point I need to document the packages better so they link to their 
   - [[#general-keybindings][GENERAL KEYBINDINGS]]
   - [[#evil][EVIL]]
 - [[#pre-init-configuration][Pre-Init Configuration]]
+  - [[#company][COMPANY]]
   - [[#vertico][Vertico]]
   - [[#orderless][Orderless]]
   - [[#consult][Consult]]
@@ -57,6 +41,7 @@ TODO at some point I need to document the packages better so they link to their 
   - [[#flycheck][FLYCHECK]]
   - [[#git-programs][GIT PROGRAMS]]
   - [[#highlight-todo][HIGHLIGHT TODO]]
+  - [[#ivy-counsel][IVY (COUNSEL)]]
   - [[#language-support][LANGUAGE SUPPORT]]
   - [[#minibuffer-escape][MINIBUFFER ESCAPE]]
   - [[#modeline][MODELINE]]
@@ -558,7 +543,27 @@ all source blocs must include  ~:tangle ~/.emacs.d/pre-init.el~
   ;;; pre-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
 #+end_src
 
- 
+** COMPANY
+[[https://company-mode.github.io/][Company]] is a text completion framework for Emacs. The name stands for "complete anything".  Completion will start automatically after you type a few letters. Use M-n and M-p to select, <return> to complete or <tab> to complete the common part.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package company
+  :defer 2
+  :diminish
+  :custom
+  (company-begin-commands '(self-insert-command))
+  (company-idle-delay .1)
+  (company-minimum-prefix-length 2)
+  (company-show-numbers t)
+  (company-tooltip-align-annotations 't)
+  (global-company-mode t))
+
+(use-package company-box
+  :after company
+  :diminish
+  :hook (company-mode . company-box-mode))
+#+end_src
+
 ** Vertico
 [[https://github.com/minad/vertico][Vertico]] provides a performant and minimalistic vertical completion UI based on the default completion system. The focus of Vertico is to provide a UI which behaves correctly under all circumstances.
  
@@ -686,111 +691,49 @@ all source blocs must include  ~:tangle ~/.emacs.d/pre-init.el~
 
 
 #+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
-
 (use-package corfu
-  :hook (lsp-completion-mode . kb/corfu-setup-lsp) ; Use corfu for lsp completion
   :ensure t
-  (:keymaps 'corfu-map
-   :states 'insert
-   "C-n" #'corfu-next
-   "C-p" #'corfu-previous
-   "<escape>" #'corfu-quit
-   "<return>" #'corfu-insert
-   "H-SPC" #'corfu-insert-separator
-   ;; "SPC" #'corfu-insert-separator ; Use when `corfu-quit-at-boundary' is non-nil
-   "M-d" #'corfu-show-documentation
-   "C-g" #'corfu-quit
-   "M-l" #'corfu-show-location)
-  :custom
-  ;; Works with `indent-for-tab-command'. Make sure tab doesn't indent when you
-  ;; want to perform completion
-  (tab-always-indent 'complete)
-  (completion-cycle-threshold nil)      ; Always show candidates in menu
+  ;; Optional customizations
+  ;; :custom
+  ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  ;; (corfu-auto t)                 ;; Enable auto completion
+  ;; (corfu-separator ?\s)          ;; Orderless field separator
+  ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  ;; (corfu-scroll-margin 5)        ;; Use scroll margin
 
-  (corfu-auto nil)
-  (corfu-auto-prefix 2)
-  (corfu-auto-delay 0.25)
+  ;; Enable Corfu only for certain modes. See also `global-corfu-modes'.
+  ;; :hook ((prog-mode . corfu-mode)
+  ;;        (shell-mode . corfu-mode)
+  ;;        (eshell-mode . corfu-mode))
 
-  (corfu-min-width 80)
-  (corfu-max-width corfu-min-width)     ; Always have the same width
-  (corfu-count 14)
-  (corfu-scroll-margin 4)
-  (corfu-cycle nil)
-
-  ;; `nil' means to ignore `corfu-separator' behavior, that is, use the older
-  ;; `corfu-quit-at-boundary' = nil behavior. Set this to separator if using
-  ;; `corfu-auto' = `t' workflow (in that case, make sure you also set up
-  ;; `corfu-separator' and a keybind for `corfu-insert-separator', which my
-  ;; configuration already has pre-prepared). Necessary for manual corfu usage with
-  ;; orderless, otherwise first component is ignored, unless `corfu-separator'
-  ;; is inserted.
-  (corfu-quit-at-boundary nil)
-  (corfu-separator ?\s)            ; Use space
-  (corfu-quit-no-match 'separator) ; Don't quit if there is `corfu-separator' inserted
-  (corfu-preview-current 'insert)  ; Preview first candidate. Insert on input if only one
-  (corfu-preselect-first t)        ; Preselect first candidate?
-
-  ;; Other
-  (corfu-echo-documentation nil)        ; Already use corfu-doc
-  (lsp-completion-provider :none)       ; Use corfu instead for lsp completions
+  ;; Recommended: Enable Corfu globally.  This is recommended since Dabbrev can
+  ;; be used globally (M-/).  See also the customization variable
+  ;; `global-corfu-modes' to exclude certain modes.
   :init
-  (corfu-global-mode)
-  :config
-  ;; NOTE 2022-03-01: This allows for a more evil-esque way to have
-  ;; `corfu-insert-separator' work with space in insert mode without resorting to
-  ;; overriding keybindings with `general-override-mode-map'. See
-  ;; https://github.com/minad/corfu/issues/12#issuecomment-869037519
-  ;; Alternatively, add advice without `general.el':
-  ;; (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
-  ;; (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
-  (general-add-advice '(corfu--setup corfu--teardown) :after 'evil-normalize-keymaps)
-  (evil-make-overriding-map corfu-map)
+  (global-corfu-mode))
 
-  ;; Enable Corfu more generally for every minibuffer, as long as no other
-  ;; completion UI is active. If you use Mct or Vertico as your main minibuffer
-  ;; completion UI. From
-  ;; https://github.com/minad/corfu#completing-with-corfu-in-the-minibuffer
-  (defun corfu-enable-always-in-minibuffer ()
-    "Enable Corfu in the minibuffer if Vertico/Mct are not active."
-    (unless (or (bound-and-true-p mct--active) ; Useful if I ever use MCT
-                (bound-and-true-p vertico--input))
-      (setq-local corfu-auto nil)       ; Ensure auto completion is disabled
-      (corfu-mode 1)))
-  (add-hook 'minibuffer-setup-hook #'corfu-enable-always-in-minibuffer 1)
+;; A few more useful configurations...
+;;(use-package emacs
+  ;;:custom
+  ;; TAB cycle if there are only few candidates
+  ;; (completion-cycle-threshold 3)
 
-  ;; Setup lsp to use corfu for lsp completion
-  (defun kb/corfu-setup-lsp ()
-    "Use orderless completion style with lsp-capf instead of the
-default lsp-passthrough."
-    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-          '(orderless))))
+  ;; Enable indentation+completion using the TAB key.
+  ;; `completion-at-point' is often bound to M-TAB.
+  ;;(tab-always-indent 'complete)
 
-(use-package kind-icon
-  :after corfu
-  :ensure: t
-  :custom
-  (kind-icon-use-icons t)
-  (kind-icon-default-face 'corfu-default) ; Have background color be the same as `corfu' face background
-  (kind-icon-blend-background nil)  ; Use midpoint color between foreground and background colors ("blended")?
-  (kind-icon-blend-frac 0.08)
+  ;; Emacs 30 and newer: Disable Ispell completion function. As an alternative,
+  ;; try `cape-dict'.
+  ;;(text-mode-ispell-word-completion nil)
 
-  ;; NOTE 2022-02-05: `kind-icon' depends `svg-lib' which creates a cache
-  ;; directory that defaults to the `user-emacs-directory'. Here, I change that
-  ;; directory to a location appropriate to `no-littering' conventions, a
-  ;; package which moves directories of other packages to sane locations.
-  (svg-lib-icons-dir (no-littering-expand-var-file-name "svg-lib/cache/")) ; Change cache dir
-  :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter) ; Enable `kind-icon'
-
-  ;; Add hook to reset cache so the icon colors match my theme
-  ;; NOTE 2022-02-05: This is a hook which resets the cache whenever I switch
-  ;; the theme using my custom defined command for switching themes. If I don't
-  ;; do this, then the backgound color will remain the same, meaning it will not
-  ;; match the background color corresponding to the current theme. Important
-  ;; since I have a light theme and dark theme I switch between. This has no
-  ;; function unless you use something similar
-  (add-hook 'kb/themes-hooks #'(lambda () (interactive) (kind-icon-reset-cache))))
-
+  ;; Hide commands in M-x which do not apply to the current mode.  Corfu
+  ;; commands are hidden, since they are not used via M-x. This setting is
+  ;; useful beyond Corfu.
+  ;;(read-extended-command-predicate #'command-completion-default-include-p))
 
 #+end_src
 
@@ -1037,6 +980,49 @@ Adding highlights to TODO and related words.
 
 #+end_src
 
+** IVY (COUNSEL)
++ Ivy, a generic completion mechanism for Emacs.
++ Counsel, a collection of Ivy-enhanced versions of common Emacs commands.
++ Ivy-rich allows us to add descriptions alongside the commands in M-x.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package counsel
+  :after ivy
+  :diminish
+  :config 
+    (counsel-mode)
+    (setq ivy-initial-inputs-alist nil)) ;; removes starting ^ regex in M-x
+
+(use-package ivy
+  :bind
+  ;; ivy-resume resumes the last Ivy-based completion.
+  (("C-c C-r" . ivy-resume)
+   ("C-x B" . ivy-switch-buffer-other-window))
+  :diminish
+  :custom
+  (setq ivy-use-virtual-buffers t)
+  (setq ivy-count-format "(%d/%d) ")
+  (setq enable-recursive-minibuffers t)
+  :config
+  (ivy-mode))
+
+(use-package all-the-icons-ivy-rich
+  :ensure t
+  :init (all-the-icons-ivy-rich-mode 1))
+
+(use-package ivy-rich
+  :after ivy
+  :ensure t
+  :init (ivy-rich-mode 1) ;; this gets us descriptions in M-x.
+  :custom
+  (ivy-virtual-abbreviate 'full
+   ivy-rich-switch-buffer-align-virtual-buffer t
+   ivy-rich-path-style 'abbrev)
+  :config
+  (ivy-set-display-transformer 'ivy-switch-buffer
+                               'ivy-rich-switch-buffer-transformer))
+
+#+end_src
 
 ** LANGUAGE SUPPORT
 Emacs has built-in programming language modes for Lisp, Scheme, DSSSL, Ada, ASM, AWK, C, C++, Fortran, Icon, IDL (CORBA), IDLWAVE, Java, Javascript, M4, Makefiles, Metafont, Modula2, Object Pascal, Objective-C, Octave, Pascal, Perl, Pike, PostScript, Prolog, Python, Ruby, Simula, SQL, Tcl, Verilog, and VHDL.  Other languages will require you to install additional modes.
