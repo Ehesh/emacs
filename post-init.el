@@ -1,15 +1,14 @@
   ;;; post-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
 
 (use-package dashboard
-  :ensure t 
+  :demand t 
   :init
   (setq initial-buffer-choice 'dashboard-open)
   (setq dashboard-set-heading-icons t)
   (setq dashboard-set-file-icons t)
-  (setq dashboard-banner-logo-title "Emacs Is More Than A Text Editor!")
-  ;;(setq dashboard-startup-banner 'logo) ;; use standard emacs logo as banner
-  (setq dashboard-startup-banner "~/.emacs.d/var/images/dtmacs-logo.png")  ;; use custom image as banner
-  (setq dashboard-center-content nil) ;; set to 't' for centered content
+  (setq dashboard-banner-logo-title "Eheshiu's cute EMACS!")
+  (setq dashboard-startup-banner "~/.emacs.d/var/images/catboy050.png")  ;; use custom image as banner
+  (setq dashboard-center-content t) ;; set to 't' for centered content
   (setq dashboard-items '((recents . 5)
                           (agenda . 5 )
                           (bookmarks . 3)
@@ -109,15 +108,40 @@
   :diminish
   :init (global-flycheck-mode))
 
-(use-package git-timemachine
-  :after git-timemachine
-  :hook (evil-normalize-keymaps . git-timemachine-hook)
-  :config
-    (evil-define-key 'normal git-timemachine-mode-map (kbd "C-j") 'git-timemachine-show-previous-revision)
-    (evil-define-key 'normal git-timemachine-mode-map (kbd "C-k") 'git-timemachine-show-next-revision)
-)
+;; (use-package flyspell
+;;   :custom
+;;   (ispell-program-name "hunspell")
+;;   (ispell-dictionary ews-hunspell-dictionaries)
+;;   (flyspell-mark-duplications-flag nil) ;; Writegood mode does this
+;;   (org-fold-core-style 'overlays) ;; Fix Org mode bug
+;;   :config
+;;   (ispell-set-spellchecker-params)
+;;   (ispell-hunspell-add-multi-dic ews-hunspell-dictionaries)
+;;   :hook
+;;   (text-mode . flyspell-mode)
+;;   :bind
+;;   (("C-c w s s" . ispell)
+;;    ("C-;"       . flyspell-auto-correct-previous-word)))
 
-(use-package magit)
+;; (use-package dictionary
+;;   :custom
+;;   (dictionary-server "dict.org")
+;;   :bind
+;;   (("C-c w s d" . dictionary-lookup-definition)))
+;; 
+;; (use-package powerthesaurus
+;;   :bind
+;;   (("C-c w s p" . powerthesaurus-transient))
+;;)
+
+  (use-package undo-tree
+    :diminish undo-tree-mode
+    :config
+    (global-undo-tree-mode)
+    :custom
+    (undo-tree-auto-save-history nil)
+    :bind
+    (("C-c w u" . undo-tree-visualise)))
 
 (use-package hl-todo
   :hook ((org-mode . hl-todo-mode)
@@ -136,17 +160,6 @@
 ;;(use-package haskell-mode)
 ;;(use-package lua-mode)
 ;;(use-package php-mode)
-
-(global-set-key [escape] 'keyboard-escape-quit)
-
-(use-package doom-modeline
-  :ensure t
-  :init (doom-modeline-mode 1)
-  :config
-  (setq doom-modeline-height 35      ;; sets modeline height
-        doom-modeline-bar-width 5    ;; sets right bar width
-        doom-modeline-persp-name t   ;; adds perspective name to modeline
-        doom-modeline-persp-icon t)) ;; adds folder icon next to persp name
 
 (use-package neotree
   :config
@@ -167,19 +180,6 @@
 
 (eval-after-load 'org-indent '(diminish 'org-indent-mode))
 
-(add-hook 'org-mode-hook 'org-indent-mode)
-(use-package org-bullets)
-(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
-
-  (custom-set-faces
-   '(org-level-1 ((t (:inherit outline-1 :height 1.7))))
-   '(org-level-2 ((t (:inherit outline-2 :height 1.6))))
-   '(org-level-3 ((t (:inherit outline-3 :height 1.5))))
-   '(org-level-4 ((t (:inherit outline-4 :height 1.4))))
-   '(org-level-5 ((t (:inherit outline-5 :height 1.3))))
-   '(org-level-6 ((t (:inherit outline-5 :height 1.2))))
-   '(org-level-7 ((t (:inherit outline-5 :height 1.1)))))
-
 (require 'org-tempo)
 
 (setq org-src-preserve-indentation t)
@@ -188,25 +188,80 @@
     :commands toc-org-enable
     :init (add-hook 'org-mode-hook 'toc-org-enable))
 
-;; Show hidden emphasis markers
+(use-package org-modern
+  ;; :custom
+  ;; (org-modern-keyword nil)
+  ;; (org-modern-checkbox nil)
+  ;; (org-modern-table nil)
+  :config
+  (setq
+    ;; Edit settings
+
+    org-auto-align-tags nil
+    org-tags-column 0
+    org-catch-invisible-edits 'show-and-error
+    org-insert-heading-respect-content t
+  
+    org-modern-star 'replace
+
+  ;;   org-hide-emphasis-markers t
+  ;;  org-pretty-entities t
+
+    ;; Agenda styling
+    org-agenda-tags-column 0
+    org-agenda-block-separator ?─
+    org-agenda-time-grid
+    '((daily today require-timed)
+      (800 1000 1200 1400 1600 1800 2000)
+      " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+    org-agenda-current-time-string
+    "◀── now ─────────────────────────────────────────────────")
+
+    ;; Ellipsis styling
+    (setq org-ellipsis "…")
+    (set-face-attribute 'org-ellipsis nil :inherit 'default :box nil)
+    (global-org-modern-mode))
+
+
+
+
+(use-package org-modern-indent
+  :ensure (org-modern-indent :host github :repo "jdtsmith/org-modern-indent")
+  :hook (org-mode . org-modern-indent-mode)
+ )
+
+(elpaca
+  '(org-menu
+    :host github
+    :repo "sheijk/org-menu"))
+
 (use-package org-appear
-  :hook (org-mode . org-appear-mode))
+ :after org
+ :hook (org-mode-hook . org-appear-mode))
+
+(use-package writegood-mode
+  ;; :bind
+ ;; (("C-c w s r" . writegood-reading-ease)
+ ;;  ("C-c w s l" . writegood-grade-level))
+  ;; :hook
+  ;; (text-mode . writegood-mode)
+)
 
 (use-package pdf-tools
   :defer t
   :commands (pdf-loader-install)
   :mode "\\.pdf\\'"
-  :bind (:map pdf-view-mode-map
-              ("j" . pdf-view-next-line-or-next-page)
-              ("k" . pdf-view-previous-line-or-previous-page)
-              ("C-=" . pdf-view-enlarge)
-              ("C--" . pdf-view-shrink))
+  ;; :bind (: pdf-view-mode-map
+  ;;             ("j" . pdf-view-next-line-or-next-page)
+  ;;             ("k" . pdf-view-previous-line-or-previous-page)
+  ;;             ("C-=" . pdf-view-enlarge)
+  ;;             ("C--" . pdf-view-shrink))
   :init (pdf-loader-install)
   :config (add-to-list 'revert-without-query ".pdf"))
 
 (add-hook 'pdf-view-mode-hook #'(lambda () (interactive) (display-line-numbers-mode -1)
-                                                         (blink-cursor-mode -1)
-                                                         (doom-modeline-mode -1)))
+             (blink-cursor-mode -1)
+             (doom-modeline-mode -1)))
 
 (use-package perspective
   :custom
@@ -242,61 +297,58 @@
   :diminish
   :hook org-mode prog-mode)
 
-(use-package eshell-toggle
-  :custom
-  (eshell-toggle-size-fraction 3)
-  (eshell-toggle-use-projectile-root t)
-  (eshell-toggle-run-command nil)
-  (eshell-toggle-init-function #'eshell-toggle-init-ansi-term))
-
-  (use-package eshell-syntax-highlighting
-    :after esh-mode
-    :config
-    (eshell-syntax-highlighting-global-mode +1))
-
-  ;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
-  ;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
-  ;; eshell-aliases-file -- sets an aliases file for the eshell.
-
-  (setq eshell-rc-script (concat user-emacs-directory "var/eshell/profile")
-        eshell-aliases-file (concat user-emacs-directory "var/eshell/aliases")
-        eshell-history-size 5000
-        eshell-buffer-maximum-lines 5000
-        eshell-hist-ignoredups t
-        eshell-scroll-to-bottom-on-input t
-        eshell-destroy-buffer-when-process-dies t
-        eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
-
-(use-package vterm
-:config
-(setq shell-file-name "/bin/sh"
-      vterm-max-scrollback 5000))
-
-(use-package vterm-toggle
-  :after vterm
-  :config
-  ;; When running programs in Vterm and in 'normal' mode, make sure that ESC
-  ;; kills the program as it would in most standard terminal programs.
-  (evil-define-key 'normal vterm-mode-map (kbd "<escape>") 'vterm--self-insert)
-  (setq vterm-toggle-fullscreen-p nil)
-  (setq vterm-toggle-scope 'project)
-  (add-to-list 'display-buffer-alist
-               '((lambda (buffer-or-name _)
-                     (let ((buffer (get-buffer buffer-or-name)))
-                       (with-current-buffer buffer
-                         (or (equal major-mode 'vterm-mode)
-                             (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-                  (display-buffer-reuse-window display-buffer-at-bottom)
-                  ;;(display-buffer-reuse-window display-buffer-in-direction)
-                  ;;display-buffer-in-direction/direction/dedicated is added in emacs27
-                  ;;(direction . bottom)
-                  ;;(dedicated . t) ;dedicated is supported in emacs27
-                  (reusable-frames . visible)
-                  (window-height . 0.4))))
-
 (use-package sudo-edit)
 
 (use-package tldr)
+
+;; Now you can use use-package to install and configure packages
+
+
+(use-package transient)       
+   
+(elpaca-wait)
+ 
+(transient-define-prefix my-transient-menu ()
+  "A sample transient menu."
+  [["Basic Commands"
+    ("SPC" "consult-outl" (lambda () (interactive) (consult-outline)))
+    ("o" "org-menu" (lambda () (interactive) (org-menu)))]
+   ["Other Commands"
+      ("TAB" "next window" next-window-any-frame)
+    ("y" "Action Y" (lambda () (interactive) (message "Action Y executed!")))]
+   ["Exit"
+    ("<escape>" "" transient-quit-one)]])
+
+;; Define the function to change the modeline color based on the meow state
+(defun my-update-modeline-color-based-on-meow-state ()
+  "Update the moody modeline color based on the state of Meow."
+  (let ((insert-state-color  (modus-themes-get-color-value 'bg-sage))  ;; Green color for insert mode
+        ;; Use modus theme aliases for the modeline in normal state
+        (normal-state-color (modus-themes-get-color-value 'bg-mode-line-active)))
+    (if (meow-insert-mode-p)
+        ;; Change to green in insert mode
+        (set-face-attribute 'mode-line nil :background insert-state-color)
+      ;; Revert to the original alias from the Modus theme
+      (set-face-attribute 'mode-line nil :background normal-state-color))))
+
+;; Add the function to the meow state change hooks
+(add-hook 'meow-insert-enter-hook #'my-update-modeline-color-based-on-meow-state)
+(add-hook 'meow-insert-exit-hook #'my-update-modeline-color-based-on-meow-state)
+
+;; Optionally hook into normal mode to ensure the color is reset there too
+(add-hook 'meow-normal-enter-hook #'my-update-modeline-color-based-on-meow-state)
+
+(use-package moody
+  :config
+  (moody-replace-mode-line-front-space)
+  (moody-replace-mode-line-buffer-identification)
+  (moody-replace-vc-mode))
+
+(use-package minions
+:config
+	(setq minions-mode-line-lighter ""
+				minions-mode-line-delimiters '("" . ""))
+ (minions-mode 1))
 
 ;; Auto-revert in Emacs is a feature that automatically updates the
 ;; contents of a buffer to reflect changes made to the underlying file

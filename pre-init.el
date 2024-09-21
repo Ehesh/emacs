@@ -1,5 +1,30 @@
   ;;; pre-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
 
+(use-package nerd-icons)
+
+
+(use-package fontaine
+  :ensure t
+  :custom
+  (fontaine-presets
+   '((regular
+      :default-family "FiraCode Nerd Font"
+      :default-weight medium
+      :default-height 110
+      :fixed-pitch-family "FiraCode Nerd Font"
+      :fixed-pitch-weight nil ; falls back to :default-weight
+      :fixed-pitch-height 1.0
+      :variable-pitch-family "Gentium Plus"
+      :variable-pitch-weight normal
+      :variable-pitch-height 1.2
+      :line-spacing 1)
+     (large
+      :inherit regular
+      :default-height 175
+      :variable-pitch-height 1.3)))
+  :config
+  (fontaine-set-preset 'regular))
+
 (use-package vertico
   :ensure t
   :bind (:map vertico-map
@@ -31,7 +56,46 @@
   (completion-category-overrides '((file (styles partial-completion)))))
    ))
 
+(use-package consult
+  :after vertico
+  :ensure t
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+  :init
+  (setq register-preview-delay 0.5
+        register-preview-function #'consult-register-format)
 
+  ;; Optionally tweak the register preview window.
+  ;; This adds thin lines, sorting and hides the mode line of the window.
+  (advice-add #'register-preview :override #'consult-register-window)
+
+  ;; Use Consult to select xref locations with preview
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+
+  ;; Configure other variables and modes in the :config section,
+  ;; after lazily loading the package.
+  :config
+
+  ;; Optionally configure preview. The default value
+  ;; is 'any, such that any key triggers the preview.
+  ;; (setq consult-preview-key 'any)
+  ;; (setq consult-preview-key "M-.")
+  ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
+  ;; For some commands and buffer sources it is useful to configure the
+  ;; :preview-key on a per-command basis using the `consult-customize' macro.
+  (consult-customize
+   consult-theme :preview-key '(:debounce 0.2 any)
+   consult-ripgrep consult-git-grep consult-grep
+   consult-bookmark consult-recent-file consult-xref
+   consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; :preview-key "M-."
+   :preview-key '(:debounce 0.4 any))
+
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; "C-+"
+)
 
 (use-package marginalia
   :after vertico
@@ -134,7 +198,7 @@
   (corfu-echo-documentation nil)        ; Already use corfu-doc
   (lsp-completion-provider :none)       ; Use corfu instead for lsp completions
   :init
-  (corfu-global-mode)
+  (global-corfu-mode)
   :config
   ;; NOTE 2022-03-01: This allows for a more evil-esque way to have
   ;; `corfu-insert-separator' work with space in insert mode without resorting to
@@ -143,8 +207,8 @@
   ;; Alternatively, add advice without `general.el':
   ;; (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
   ;; (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
-  (general-add-advice '(corfu--setup corfu--teardown) :after 'evil-normalize-keymaps)
-  (evil-make-overriding-map corfu-map)
+  ;; (general-add-advice '(corfu--setup corfu--teardown) :after 'evil-normalize-keymaps)
+  ;; (evil-make-overriding-map corfu-map)
 
   ;; Enable Corfu more generally for every minibuffer, as long as no other
   ;; completion UI is active. If you use Mct or Vertico as your main minibuffer
@@ -167,7 +231,7 @@ default lsp-passthrough."
 
 (use-package kind-icon
   :after corfu
-  :ensure: t
+  :ensure t
   :custom
   (kind-icon-use-icons t)
   (kind-icon-default-face 'corfu-default) ; Have background color be the same as `corfu' face background
@@ -178,7 +242,7 @@ default lsp-passthrough."
   ;; directory that defaults to the `user-emacs-directory'. Here, I change that
   ;; directory to a location appropriate to `no-littering' conventions, a
   ;; package which moves directories of other packages to sane locations.
-  (svg-lib-icons-dir (no-littering-expand-var-file-name "svg-lib/cache/")) ; Change cache dir
+  ;;(svg-lib-icons-dir (no-littering-expand-var-file-name "svg-lib/cache/")) ; Change cache dir
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter) ; Enable `kind-icon'
 
@@ -191,9 +255,31 @@ default lsp-passthrough."
   ;; function unless you use something similar
   (add-hook 'kb/themes-hooks #'(lambda () (interactive) (kind-icon-reset-cache))))
 
-
+(use-package cape
+  :after corfu
+  :ensure t
+  ;; Bind prefix keymap providing all Cape commands under a mnemonic key.
+  ;; Press C-c p ? to for help.
+;;  :bind ("C-c p" . cape-prefix-map) ;; Alternative keys: M-p, M-+, ...
+  ;; Alternatively bind Cape commands individually.
+  ;; :bind (("C-c p d" . cape-dabbrev)
+  ;;        ("C-c p h" . cape-history)
+  ;;        ("C-c p f" . cape-file)
+  ;;        ...)
+  :init
+  ;; Add to the global default value of `completion-at-point-functions' which is
+  ;; used by `completion-at-point'.  The order of the functions matters, the
+  ;; first function returning a result wins.  Note that the list of buffer-local
+  ;; completion functions takes precedence over the global list.
+  (add-hook 'completion-at-point-functions #'cape-dabbrev)
+  (add-hook 'completion-at-point-functions #'cape-file)
+  (add-hook 'completion-at-point-functions #'cape-elisp-block)
+  ;; (add-hook 'completion-at-point-functions #'cape-history)
+  ;; ...
+)
 
 (use-package which-key
+  :ensure t
   :init
     (which-key-mode 1)
   :diminish

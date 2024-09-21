@@ -1,0 +1,1790 @@
+#+TITLE: E6's GNU Emacs Config
+#+AUTHOR: Elihu SoNy (Ehesh)
+#+DESCRIPTION: DT's personal Emacs config.
+#+STARTUP: showeverything
+#+OPTIONS: toc:3
+
+After years of trying to use emacs and failing, part of which is that I could not get the nag of it, the other part that I would get very frustrated as it did not work so good with windows, I am trying once more to find my way here. This is my config. I have always hessitated to all myself a programmer. Instead, I am more of a tinkerer, and this is my current playground. This is my frankenstein of a config taken from here and there. Some are just direct copy and paste from the repos. The base is made by Derek Taylor's config that was then absorbed to the Xero Linux distro configurations. From there I ran into Minimal Emacs on Reddit and thought about implementing it. Gotta say, I feel quite proud of myself for getting this far. I have also taken portions Kristoffer Balintona's articles chi-xigua's PovertEmacs. I also wanted to implement Marie-Hélène Burle's suggestion's on a youtube video from WestDRI.  
+
+
+DT's gitlab repo: https://gitlab.com/dwt1/dotfiles
+Xero Linux: https://github.com/xerolinux/eMacs-Config
+Minimal Emacs: https://github.com/jamescherti/minimal-emacs.d
+Kristoffer Balintona: https://kristofferbalintona.me/
+Marie-Hélène Burle: https://www.youtube.com/watch?v=SOxlQ7ogplA&t
+PovertEmacs: https://codeberg.org/chi-xigua/PovertEmacs#headline-79
+
+
+
+
+TODO at some point I need to document the packages better so they link to their own repo's and comment things arround.
+
+
+
+* Table of contents :toc:
+- [[#auto-tangle-configuration][Auto-Tangle Configuration]]
+- [[#pre-early-init-configuration][Pre-Early-Init Configuration]]
+  - [[#custom-variables][Custom Variables]]
+  - [[#custom-set-faces][Custom set faces]]
+  - [[#emacs-folder][Emacs Folder]]
+  - [[#important-programs-to-load-first][IMPORTANT PROGRAMS TO LOAD FIRST]]
+  - [[#qos][QOS]]
+  - [[#enable-prettify-symbols-mode][Enable prettify symbols mode]]
+  - [[#all-the-icons][ALL THE ICONS]]
+  - [[#sane-defaults][SANE DEFAULTS]]
+  - [[#backup][BACKUP]]
+- [[#post-early-init-configuration][Post-Early-Init Configuration]]
+  - [[#theme][THEME]]
+  - [[#diminish][DIMINISH]]
+  - [[#transparency][TRANSPARENCY]]
+  - [[#general-keybindings][GENERAL KEYBINDINGS]]
+  - [[#meow][Meow]]
+  - [[#minibuffer-escape][MINIBUFFER ESCAPE]]
+- [[#pre-init-configuration][Pre-Init Configuration]]
+  - [[#fonts][FONTS]]
+  - [[#vertico][Vertico]]
+  - [[#orderless][Orderless]]
+  - [[#consult][Consult]]
+  - [[#marginalia][Marginalia]]
+  - [[#embark][Embark]]
+  - [[#corfu][Corfu]]
+  - [[#cape-todo-the-bind-map][Cape TODO the bind map]]
+  - [[#which-key][WHICH-KEY]]
+- [[#post-init-configuration][Post-Init Configuration]]
+  - [[#dashboard][DASHBOARD]]
+  - [[#dired][DIRED]]
+  - [[#drag-stuff][DRAG-STUFF]]
+  - [[#ediff][EDIFF]]
+  - [[#elfeed][ELFEED]]
+  - [[#eradio][ERADIO]]
+  - [[#flycheck][FLYCHECK]]
+  - [[#flyspell][FLYSPELL]]
+  - [[#dictionary--thesaurus][Dictionary + Thesaurus]]
+  - [[#undo-tree][UNDO TREE]]
+  - [[#git-programs][GIT PROGRAMS]]
+  - [[#highlight-todo][HIGHLIGHT TODO]]
+  - [[#language-support][LANGUAGE SUPPORT]]
+  - [[#neotree][NEOTREE]]
+  - [[#org-mode][ORG MODE]]
+  - [[#write-good-mode][Write Good Mode]]
+  - [[#pdfs][PDFs]]
+  - [[#perspective][PERSPECTIVE]]
+  - [[#projectile][PROJECTILE]]
+  - [[#rainbow-delimiters][RAINBOW DELIMITERS]]
+  - [[#rainbow-mode][RAINBOW MODE]]
+  - [[#shells-and-terminals][SHELLS AND TERMINALS]]
+  - [[#sudo-edit][Sudo EDIT]]
+  - [[#tldr][TLDR]]
+  - [[#transient][TRANSIENT]]
+  - [[#moody][MOODY]]
+- [[#post-hooks][Post hooks]]
+  - [[#test][TEST]]
+
+* Auto-Tangle Configuration
+  Automatically tangle this config file on save.
+
+#+BEGIN_SRC emacs-lisp
+(defun org-babel-tangle-on-save ()
+  "Tangle the current Org file if `org-babel-tangle` is enabled."
+  (when (string= (file-name-extension (buffer-file-name)) "org")
+    (org-babel-tangle)))
+
+(add-hook 'org-mode-hook
+          (lambda () (add-hook 'before-save-hook #'org-babel-tangle-on-save nil 'local)))
+#+END_SRC
+
+* Pre-Early-Init Configuration
+  This section will generate the `pre-early-init.el` file.
+all source blocs must include  ~:tangle ~/.emacs.d/pre-early-init.el~
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+  ;;; pre-early-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
+#+end_src
+
+
+** Custom Variables 
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   '("02f57ef0a20b7f61adce51445b68b2a7e832648ce2e7efb19d217b6454c1b644" "6945dadc749ac5cbd47012cad836f92aea9ebec9f504d32fe89a956260773ca4" "944d52450c57b7cbba08f9b3d08095eb7a5541b0ecfb3a0a9ecd4a18f3c28948" "636b135e4b7c86ac41375da39ade929e2bd6439de8901f53f88fde7dd5ac3561" "1f669e8abe4dc2855268c9a607b5e350e2811b3c5afd09af5939ff0c01a89c5a" default))
+ '(package-selected-packages
+   '(doom-modeline ivy-rich all-the-icons-ivy-rich flycheck dashboard all-the-icons))
+ '(send-mail-function 'smtpmail-send-it)
+ '(smtpmail-smtp-server "smtp.1and1.com")
+ '(smtpmail-smtp-service 587))
+
+#+end_src
+** Custom set faces
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(org-level-1 ((t (:inherit outline-1 :height 1.7))))
+;;  '(org-level-2 ((t (:inherit outline-2 :height 1.6))))
+;;  '(org-level-3 ((t (:inherit outline-3 :height 1.5))))
+;;  '(org-level-4 ((t (:inherit outline-4 :height 1.4))))
+;;  '(org-level-5 ((t (:inherit outline-5 :height 1.3))))
+;;  '(org-level-6 ((t (:inherit outline-5 :height 1.2))))
+;;  '(org-level-7 ((t (:inherit outline-5 :height 1.1)))))
+#+end_src
+ 
+** Emacs Folder
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+(setq default-directory "G:/Other computers/Lenny/Documents/Story-Weaver")
+#+end_src
+
+** IMPORTANT PROGRAMS TO LOAD FIRST
+To keep this =config.org= a reasonable length, I have moved a lot of code to individual scripts that will be sourced by this config.  These scripts are found in "~/.emacs.d/scripts" and do not contain any code that most people are likely to need to edit.
+
+*** Adding the scripts directory to path
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+(add-to-list 'load-path "~/.emacs.d/var/scripts/")
+#+end_src
+
+*** Sourcing the scripts
+#+begin_src emacs-lisp  :tangle ~/.emacs.d/pre-early-init.el
+
+(require 'elpaca-setup)  ;; The Elpaca Package Manager
+(require 'buffer-move)   ;; Buffer-move for better window management
+(require 'app-launchers) ;; Use emacs as a run launcher like dmenu (experimental)
+#+end_src
+
+** QOS
+*** Declutter
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+;; Reducing clutter in ~/.emacs.d by redirecting files to ~/emacs.d/var/
+(setq minimal-emacs-var-dir (expand-file-name "var/" minimal-emacs-user-directory))
+;;(setq package-user-dir (expand-file-name "elpa" minimal-emacs-var-dir))
+;;(setq package-user-dir (expand-file-name "elpaca" minimal-emacs-var-dir))
+(setq user-emacs-directory minimal-emacs-var-dir)
+#+end_src
+
+** Enable prettify symbols mode
+#+BEGIN_SRC emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+  (global-prettify-symbols-mode t)
+#+END_SRC
+
+
+** ALL THE ICONS
+This is an icon set that can be used with dashboard, dired, ibuffer and other Emacs programs.
+  
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+(use-package all-the-icons
+  :ensure t
+  :if (display-graphic-p))
+
+(use-package all-the-icons-dired
+  :hook (dired-mode . (lambda () (all-the-icons-dired-mode t))))
+#+end_src
+
+
+
+*** Zooming In/Out
+You can use the bindings CTRL plus =/- for zooming in/out.  You can also use CTRL plus the mouse wheel for zooming in/out.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+(global-set-key (kbd "C-=") 'text-scale-increase)
+(global-set-key (kbd "C--") 'text-scale-decrease)
+(global-set-key (kbd "<C-wheel-up>") 'text-scale-increase)
+(global-set-key (kbd "<C-wheel-down>") 'text-scale-decrease)
+#+end_src
+
+** SANE DEFAULTS
+The following settings are simple modes that are enabled (or disabled) so that Emacs functions more like you would expect a proper editor/IDE to function.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-early-init.el
+
+(delete-selection-mode 1)    ;; You can select text and delete it by typing.
+(electric-indent-mode -1)    ;; Turn off the weird indenting that Emacs does by default.
+(electric-pair-mode 1)       ;; Turns on automatic parens pairing
+;; The following prevents <> from auto-pairing when electric-pair-mode is on.
+;; Otherwise, org-tempo is broken when you try to <s TAB...
+(add-hook 'org-mode-hook (lambda ()
+           (setq-local electric-pair-inhibit-predicate
+                   `(lambda (c)
+                  (if (char-equal c ?<) t (,electric-pair-inhibit-predicate c))))))
+(global-auto-revert-mode t)  ;; Automatically show changes if the file has changed
+(global-display-line-numbers-mode 1) ;; Display line numbers
+(global-visual-line-mode t)  ;; Enable truncated lines
+(menu-bar-mode -1)           ;; Disable the menu bar 
+(scroll-bar-mode -1)         ;; Disable the scroll bar
+(tool-bar-mode -1)           ;; Disable the tool bar
+(setq org-edit-src-content-indentation 0) ;; Set src block automatic indent to 0 instead of 2.
+(setq use-file-dialog nil)   ;; No file dialog
+(setq use-dialog-box nil)    ;; No dialog box
+(setq pop-up-windows nil)    ;; No popup windows
+#+end_src
+
+
+** BACKUP 
+By default, Emacs creates automatic backups of files in their original directories, such "file.el" and the backup "file.el~".  This leads to a lot of clutter, so let's tell Emacs to put all backups that it creates in the =TRASH= directory.
+
+#+begin_src emacs-lisp  :tangle ~/.emacs.d/pre-early-init.el
+(setq backup-directory-alist '((".*" . "~/.local/share/Trash/files")))
+#+end_src
+
+
+* Post-Early-Init Configuration
+  This section will generate the `post-early-init.el` file.
+all source blocs must include  ~:tangle ~/.emacs.d/post-early-init.el~
+
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+  ;;; post-early-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
+#+end_src
+
+
+
+
+
+
+
+** THEME
+
+I have changed the themes to modus. I really liked Doom-one that wa set up before and I might at somepoint create my custom Modus with that color scheme. But as modus is starting in version 28, I thought I keep stuff in house a bit.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+
+
+
+(use-package modus-themes
+  ;; :load-path "~/.emacs.d/src/modus-themes"
+  :ensure
+  :demand
+  :init
+(setq modus-themes-mode-line '(accented borderless)
+      modus-themes-bold-constructs t
+      modus-themes-italic-constructs t
+      modus-themes-fringes 'subtle
+      modus-themes-tabs-accented t
+      modus-themes-paren-match '(bold intense)
+      modus-themes-prompts '(bold intense)
+      modus-themes-completions       '((matches . (extrabold underline))
+                                       (selection . (semibold italic)))
+      modus-themes-org-blocks 'tinted-background
+      modus-themes-scale-headings t
+      modus-themes-region '(bg-only)
+      modus-themes-headings
+      '((1 . (rainbow overline background 1.4))
+        (2 . (rainbow background 1.3))
+        (3 . (rainbow bold 1.2))
+        (t . (semilight 1.1))))
+
+;; Load the deuteranopia theme by default
+(load-theme 'modus-operandi-deuteranopia t)
+(setq modus-themes-to-toggle '(modus-operandi-deuteranopia modus-vivendi-deuteranopia))
+
+)
+
+
+
+(define-key global-map (kbd "<f5>") #'modus-themes-toggle)
+
+
+
+#+end_src
+
+
+** DIMINISH
+This package implements hiding or abbreviation of the modeline displays (lighters) of minor-modes.  With this package installed, you can add ':diminish' to any use-package block to hide that particular mode in the modeline.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+(use-package diminish)
+  (elpaca-wait)
+#+end_src
+
+** TRANSPARENCY
+With Emacs version 29, true transparency has been added.  I have turned transparency off by setting the alpha to '100'.  If you want some slight transparency, try setting alpha to '90'.  Of course, if you set alpha to '0', the background of Emacs would completely transparent.
+
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+(add-to-list 'default-frame-alist '(alpha-background . 100)) ; For all new frames henceforth
+
+#+end_src
+
+** GENERAL KEYBINDINGS
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+;; (use-package general
+;;   :config
+;;   (general-evil-setup)
+;;   
+;;   ;; set up 'SPC' as the global leader key
+;;   (general-create-definer dt/leader-keys
+;;     :states '(normal insert visual emacs)
+;;     :keymaps 'override
+;;     :prefix "SPC" ;; set leader
+;;     :global-prefix "M-SPC") ;; access leader in insert mode
+;; 
+;;   (dt/leader-keys
+;;     "SPC" '(counsel-M-x :wk "Counsel M-x")
+;;     "." '(find-file :wk "Find file")
+;;     "=" '(perspective-map :wk "Perspective") ;; Lists all the perspective keybindings
+;;     "TAB TAB" '(comment-line :wk "Comment lines")
+;;     "u" '(universal-argument :wk "Universal argument"))
+;; 
+;;   (dt/leader-keys
+;;     "b" '(:ignore t :wk "Bookmarks/Buffers")
+;;     "b b" '(switch-to-buffer :wk "Switch to buffer")
+;;     "b c" '(clone-indirect-buffer :wk "Create indirect buffer copy in a split")
+;;     "b C" '(clone-indirect-buffer-other-window :wk "Clone indirect buffer in new window")
+;;     "b d" '(bookmark-delete :wk "Delete bookmark")
+;;     "b i" '(ibuffer :wk "Ibuffer")
+;;     "b k" '(kill-current-buffer :wk "Kill current buffer")
+;;     "b K" '(kill-some-buffers :wk "Kill multiple buffers")
+;;     "b l" '(list-bookmarks :wk "List bookmarks")
+;;     "b m" '(bookmark-set :wk "Set bookmark")
+;;     "b n" '(next-buffer :wk "Next buffer")
+;;     "b p" '(previous-buffer :wk "Previous buffer")
+;;     "b r" '(revert-buffer :wk "Reload buffer")
+;;     "b R" '(rename-buffer :wk "Rename buffer")
+;;     "b s" '(basic-save-buffer :wk "Save buffer")
+;;     "b S" '(save-some-buffers :wk "Save multiple buffers")
+;;     "b w" '(bookmark-save :wk "Save current bookmarks to bookmark file"))
+;; 
+;;   (dt/leader-keys
+;;     "d" '(:ignore t :wk "Dired")
+;;     "d d" '(dired :wk "Open dired")
+;;     "d f" '(wdired-finish-edit :wk "Writable dired finish edit")
+;;     "d j" '(dired-jump :wk "Dired jump to current")
+;;     "d n" '(neotree-dir :wk "Open directory in neotree")
+;;     "d p" '(peep-dired :wk "Peep-dired")
+;;     "d w" '(wdired-change-to-wdired-mode :wk "Writable dired"))
+;; 
+;;   (dt/leader-keys
+;;     "e" '(:ignore t :wk "Ediff/Eshell/Eval/EWW")    
+;;     "e b" '(eval-buffer :wk "Evaluate elisp in buffer")
+;;     "e d" '(eval-defun :wk "Evaluate defun containing or after point")
+;;     "e e" '(eval-expression :wk "Evaluate and elisp expression")
+;;     "e f" '(ediff-files :wk "Run ediff on a pair of files")
+;;     "e F" '(ediff-files3 :wk "Run ediff on three files")
+;;     "e h" '(counsel-esh-history :which-key "Eshell history")
+;;     "e l" '(eval-last-sexp :wk "Evaluate elisp expression before point")
+;;     "e r" '(eval-region :wk "Evaluate elisp in region")
+;;     "e R" '(eww-reload :which-key "Reload current page in EWW")
+;;     "e s" '(eshell :which-key "Eshell")
+;;     "e w" '(eww :which-key "EWW emacs web wowser"))
+;; 
+;;   (dt/leader-keys
+;;     "f" '(:ignore t :wk "Files")    
+;;     "f c" '((lambda () (interactive)
+;;               (find-file "~/.emacs.d/config.org")) 
+;;             :wk "Open emacs config.org")
+;;     "f e" '((lambda () (interactive)
+;;               (dired "~/.emacs.d/")) 
+;;             :wk "Open user-emacs-directory in dired")
+;;     "f d" '(find-grep-dired :wk "Search for string in files in DIR")
+;;     "f g" '(counsel-grep-or-swiper :wk "Search for string current file")
+;;     "f i" '((lambda () (interactive)
+;;               (find-file "~/.emacs.d/init.el")) 
+;;             :wk "Open emacs init.el")
+;;     "f j" '(counsel-file-jump :wk "Jump to a file below current directory")
+;;     "f l" '(counsel-locate :wk "Locate a file")
+;;     "f r" '(counsel-recentf :wk "Find recent files")
+;;     "f u" '(sudo-edit-find-file :wk "Sudo find file")
+;;     "f U" '(sudo-edit :wk "Sudo edit file"))
+;; 
+;;   (dt/leader-keys
+;;     "g" '(:ignore t :wk "Git")    
+;;     "g /" '(magit-displatch :wk "Magit dispatch")
+;;     "g ." '(magit-file-displatch :wk "Magit file dispatch")
+;;     "g b" '(magit-branch-checkout :wk "Switch branch")
+;;     "g c" '(:ignore t :wk "Create") 
+;;     "g c b" '(magit-branch-and-checkout :wk "Create branch and checkout")
+;;     "g c c" '(magit-commit-create :wk "Create commit")
+;;     "g c f" '(magit-commit-fixup :wk "Create fixup commit")
+;;     "g C" '(magit-clone :wk "Clone repo")
+;;     "g f" '(:ignore t :wk "Find") 
+;;     "g f c" '(magit-show-commit :wk "Show commit")
+;;     "g f f" '(magit-find-file :wk "Magit find file")
+;;     "g f g" '(magit-find-git-config-file :wk "Find gitconfig file")
+;;     "g F" '(magit-fetch :wk "Git fetch")
+;;     "g g" '(magit-status :wk "Magit status")
+;;     "g i" '(magit-init :wk "Initialize git repo")
+;;     "g l" '(magit-log-buffer-file :wk "Magit buffer log")
+;;     "g r" '(vc-revert :wk "Git revert file")
+;;     "g s" '(magit-stage-file :wk "Git stage file")
+;;     "g t" '(git-timemachine :wk "Git time machine")
+;;     "g u" '(magit-stage-file :wk "Git unstage file"))
+;; 
+;;  (dt/leader-keys
+;;     "h" '(:ignore t :wk "Help")
+;;     "h a" '(counsel-apropos :wk "Apropos")
+;;     "h b" '(describe-bindings :wk "Describe bindings")
+;;     "h c" '(describe-char :wk "Describe character under cursor")
+;;     "h d" '(:ignore t :wk "Emacs documentation")
+;;     "h d a" '(about-emacs :wk "About Emacs")
+;;     "h d d" '(view-emacs-debugging :wk "View Emacs debugging")
+;;     "h d f" '(view-emacs-FAQ :wk "View Emacs FAQ")
+;;     "h d m" '(info-emacs-manual :wk "The Emacs manual")
+;;     "h d n" '(view-emacs-news :wk "View Emacs news")
+;;     "h d o" '(describe-distribution :wk "How to obtain Emacs")
+;;     "h d p" '(view-emacs-problems :wk "View Emacs problems")
+;;     "h d t" '(view-emacs-todo :wk "View Emacs todo")
+;;     "h d w" '(describe-no-warranty :wk "Describe no warranty")
+;;     "h e" '(view-echo-area-messages :wk "View echo area messages")
+;;     "h f" '(describe-function :wk "Describe function")
+;;     "h F" '(describe-face :wk "Describe face")
+;;     "h g" '(describe-gnu-project :wk "Describe GNU Project")
+;;     "h i" '(info :wk "Info")
+;;     "h I" '(describe-input-method :wk "Describe input method")
+;;     "h k" '(describe-key :wk "Describe key")
+;;     "h l" '(view-lossage :wk "Display recent keystrokes and the commands run")
+;;     "h L" '(describe-language-environment :wk "Describe language environment")
+;;     "h m" '(describe-mode :wk "Describe mode")
+;;     "h r" '(:ignore t :wk "Reload")
+;;     "h r r" '((lambda () (interactive)
+;;                 (load-file "~/.emacs.d/init.el")
+;;                 (ignore (elpaca-process-queues)))
+;;               :wk "Reload emacs config")
+;;     "h t" '(load-theme :wk "Load theme")
+;;     "h v" '(describe-variable :wk "Describe variable")
+;;     "h w" '(where-is :wk "Prints keybinding for command if set")
+;;     "h x" '(describe-command :wk "Display full documentation for command"))
+;; 
+;;   (dt/leader-keys
+;;     "m" '(:ignore t :wk "Org")
+;;     "m a" '(org-agenda :wk "Org agenda")
+;;     "m e" '(org-export-dispatch :wk "Org export dispatch")
+;;     "m i" '(org-toggle-item :wk "Org toggle item")
+;;     "m t" '(org-todo :wk "Org todo")
+;;     "m B" '(org-babel-tangle :wk "Org babel tangle")
+;;     "m T" '(org-todo-list :wk "Org todo list"))
+;; 
+;;   (dt/leader-keys
+;;     "m b" '(:ignore t :wk "Tables")
+;;     "m b -" '(org-table-insert-hline :wk "Insert hline in table"))
+;; 
+;;   (dt/leader-keys
+;;     "m d" '(:ignore t :wk "Date/deadline")
+;;     "m d t" '(org-time-stamp :wk "Org time stamp"))
+;; 
+;;   (dt/leader-keys
+;;     "o" '(:ignore t :wk "Open")
+;;     "o d" '(dashboard-open :wk "Dashboard")
+;;     "o e" '(elfeed :wk "Elfeed RSS")
+;;     "o f" '(make-frame :wk "Open buffer in new frame")
+;;     "o F" '(select-frame-by-name :wk "Select frame by name"))
+;; 
+;;   ;; projectile-command-map already has a ton of bindings 
+;;   ;; set for us, so no need to specify each individually.
+;;   (dt/leader-keys
+;;     "p" '(projectile-command-map :wk "Projectile"))
+;;   
+;;   (dt/leader-keys
+;;     "r" '(:ignore t :wk "Radio")
+;;     "r p" '(eradio-play :wk "Eradio play")
+;;     "r s" '(eradio-stop :wk "Eradio stop")
+;;     "r t" '(eradio-toggle :wk "Eradio toggle"))
+;; 
+;; 
+;;   (dt/leader-keys
+;;     "s" '(:ignore t :wk "Search")
+;;     "s d" '(dictionary-search :wk "Search dictionary")
+;;     "s m" '(man :wk "Man pages")
+;;     "s o" '(pdf-occur :wk "Pdf search lines matching STRING")
+;;     "s t" '(tldr :wk "Lookup TLDR docs for a command")
+;;     "s w" '(woman :wk "Similar to man but doesn't require man"))
+;; 
+;;   (dt/leader-keys
+;;     "t" '(:ignore t :wk "Toggle")
+;;     "t e" '(eshell-toggle :wk "Toggle eshell")
+;;     "t f" '(flycheck-mode :wk "Toggle flycheck")
+;;     "t l" '(display-line-numbers-mode :wk "Toggle line numbers")
+;;     "t n" '(neotree-toggle :wk "Toggle neotree file viewer")
+;;     "t o" '(org-mode :wk "Toggle org mode")
+;;     "t r" '(rainbow-mode :wk "Toggle rainbow mode")
+;;     "t t" '(visual-line-mode :wk "Toggle truncated lines")
+;;     "t v" '(vterm-toggle :wk "Toggle vterm"))
+;; 
+;;   (dt/leader-keys
+;;     "w" '(:ignore t :wk "Windows/Words")
+;;     ;; Window splits
+;;     "w c" '(evil-window-delete :wk "Close window")
+;;     "w n" '(evil-window-new :wk "New window")
+;;     "w s" '(evil-window-split :wk "Horizontal split window")
+;;     "w v" '(evil-window-vsplit :wk "Vertical split window")
+;;     ;; Window motions
+;;     "w h" '(evil-window-left :wk "Window left")
+;;     "w j" '(evil-window-down :wk "Window down")
+;;     "w k" '(evil-window-up :wk "Window up")
+;;     "w l" '(evil-window-right :wk "Window right")
+;;     "w w" '(evil-window-next :wk "Goto next window")
+;;     ;; Move Windows
+;;     "w H" '(buf-move-left :wk "Buffer move left")
+;;     "w J" '(buf-move-down :wk "Buffer move down")
+;;     "w K" '(buf-move-up :wk "Buffer move up")
+;;     "w L" '(buf-move-right :wk "Buffer move right")
+;;     ;; Words
+;;     "w d" '(downcase-word :wk "Downcase word")
+;;     "w u" '(upcase-word :wk "Upcase word")
+;;     "w =" '(count-words :wk "Count words/lines for buffer"))
+;; )
+
+#+end_src
+
+
+** Meow
+=meow= Meow is yet another modal editing mode for Emacs.
+
+Meow aims to blend modal editing into Emacs with minimal interference with its original key-bindings, avoiding most of the hassle introduced by key-binding conflicts. This leads to lower necessary configuration and better integration. More is achieved with fewer commands to remember. lightly inspired in helix's [[https://eugenesvk.github.io/kbdHelix/modifew/#m-normal][modifew]]
+ 
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+
+(define-key minibuffer-local-map (kbd "C-i") 'next-line)
+(define-key minibuffer-local-map (kbd "C-k") 'next-line)
+
+(defun meow-setup ()
+    (meow-motion-overwrite-define-key
+     '("j" . meow-next) 
+     '("k" . meow-prev) 
+     '("SPC" . my-transient-menu)
+     '("<escape>" . ignore))
+
+    (meow-leader-define-key
+     ;; SPC j/k will run the original command in MOTION state.
+;;     '("SPC" . my-transient-menu)
+     '("j" . "H-j")
+     '("k" . "H-k")
+;;     '("SPC" . e6-meow-leader)
+;;      ;; --- File Navigation ---
+;;      '("." . find-file) 
+;;      '("=" . perspective-map)
+;;      ;; --- Editing ---
+;;      '("TAB" . comment-line)
+;;      '("u" . universal-argument)
+;;      ;; Use SPC (0-9) for digit arguments.
+;;      '("1" . meow-digit-argument)
+;;      '("2" . meow-digit-argument)
+;;      '("3" . meow-digit-argument)
+;;      '("4" . meow-digit-argument)
+;;      '("5" . meow-digit-argument)
+;;      '("6" . meow-digit-argument)
+;;      '("7" . meow-digit-argument)
+;;      '("8" . meow-digit-argument)
+;;      '("9" . meow-digit-argument)
+;;      '("0" . meow-digit-argument)
+;;      ;; --- Meow Help ---
+;;      '("/" . meow-keypad-describe-key)
+;;      '("?" . meow-cheatsheet)
+;; 
+;;      ;; --- Transient Menu Example (Buffers) ---
+;;      '("b" . e6-buffer-menu)
+     )
+    (meow-normal-define-key
+     '("0" . meow-expand-0)
+     '("9" . meow-expand-9)
+     '("8" . meow-expand-8)
+     '("7" . meow-expand-7)
+     '("6" . meow-expand-6)
+     '("5" . meow-expand-5)
+     '("4" . meow-expand-4)
+     '("3" . meow-expand-3)
+     '("2" . meow-expand-2)
+     '("1" . meow-expand-1)
+     '("-" . negative-argument)
+     '(";" . meow-reverse)
+     '("," . meow-inner-of-thing)
+     '("." . meow-bounds-of-thing)
+     '("[" . meow-beginning-of-thing)
+     '("]" . meow-end-of-thing)
+     '("a" . execute-extended-command)
+     '("A" . meow-open-below)
+     '("b" . meow-back-word)
+     '("B" . meow-back-symbol)
+     '("c" . kill-ring-save)
+    ;; '("d" . meow-delete)
+    ;; '("D" . meow-backward-delete)
+     '("e" . meow-append)
+     '("E" . meow-next-symbol)
+     '("f" . meow-find)
+     '("g" . meow-cancel-selection)
+     '("G" . meow-grab)
+     '("h" . meow-backward-delete)
+     '("H" . meow-delete)
+     '("i" . meow-prev)
+     '("I" . meow-open-above)
+     '("j" . meow-back-word)
+     '("J" . meow-back-expand)
+     '("k" . meow-next)
+     '("K" . meow-open-below)
+     '("l" . meow-next-word)
+     '("L" . meow-expand-next-word)
+     '("m" . meow-join)
+     '("n" . meow-search)
+     '("o" . meow-block)
+     '("O" . meow-to-block)
+     '("p" . meow-inner-of-thing)
+     '("q" . meow-quit)
+     '("Q" . meow-goto-line)
+     '("r" . meow-replace)
+     '("R" . meow-swap-grab)
+     '("s" . meow-grab)
+     '("t" . meow-till)
+     '("u" . meow-undo)
+     '("U" . meow-undo-in-selection)
+     '("v" . clipboard-yank)
+     '("w" . meow-mark-word)
+     '("W" . meow-mark-symbol)
+     '("x" . meow-kill)
+     '("X" . meow-goto-line)
+     '("y" . undo-redo)
+     '("Y" . meow-sync-grab)
+     '("z" . meow-pop-selection)
+     '("'" . repeat)
+     '("<escape>" . ignore)
+     '("SPC" . my-transient-menu)
+))
+
+
+
+
+#+end_src
+
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+  (use-package meow
+ 
+  :ensure t
+  :config
+  ;; set colors in theme
+  (setq meow-use-dynamic-face-color nil)
+  (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
+  (setq meow-keypad-leader-dispatch nil) 
+  
+;;;; Cool cursor stuffs
+;; (defun meow--update-cursor-custom ()
+;;   (progn
+;;     (meow--set-cursor-type 'hollow)
+;;     (meow--set-cursor-color 'meow-insert-cursor)))
+;; (add-to-list 'meow-update-cursor-functions-alist
+;;              '((lambda () (and (meow-insert-mode-p)
+;;                                (eq major-mode 'org-mode)))
+;;                . meow--update-cursor-custom))
+
+  (meow-setup)
+  (meow-global-mode 1)) 
+
+#+end_src
+
+
+** MINIBUFFER ESCAPE
+By default, Emacs requires you to hit ESC three times to escape quit the minibuffer.  
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-early-init.el
+(global-set-key [escape] 'keyboard-escape-quit)
+#+end_src
+* Pre-Init Configuration
+
+
+  This section will generate the `pre-init.el` file.
+all source blocs must include  ~:tangle ~/.emacs.d/pre-init.el~
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+  ;;; pre-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
+#+end_src
+
+** FONTS
+ 
+
+
+Defining the various fonts that Emacs will use.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+
+(use-package nerd-icons)
+
+
+(use-package fontaine
+  :ensure t
+  :custom
+  (fontaine-presets
+   '((regular
+      :default-family "FiraCode Nerd Font"
+      :default-weight medium
+      :default-height 110
+      :fixed-pitch-family "FiraCode Nerd Font"
+      :fixed-pitch-weight nil ; falls back to :default-weight
+      :fixed-pitch-height 1.0
+      :variable-pitch-family "Gentium Plus"
+      :variable-pitch-weight normal
+      :variable-pitch-height 1.2
+      :line-spacing 1)
+     (large
+      :inherit regular
+      :default-height 175
+      :variable-pitch-height 1.3)))
+  :config
+  (fontaine-set-preset 'regular))
+
+#+end_src
+
+** Vertico
+[[https://github.com/minad/vertico][Vertico]] provides a performant and minimalistic vertical completion UI based on the default completion system. The focus of Vertico is to provide a UI which behaves correctly under all circumstances.
+ 
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package vertico
+  :ensure t
+  :bind (:map vertico-map
+         ("C-j" . vertico-next)
+         ("C-k" . vertico-previous)
+         ("C-f" . vertico-exit)
+         :map minibuffer-local-map
+         ("M-h" . backward-kill-word))
+  :custom
+  (vertico-cycle t)
+  :init
+  (vertico-mode))
+
+#+end_src
+
+** Orderless
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package orderless
+  :ensure t
+  :custom
+  (orderless-matching-styles
+   '(orderless-literal
+     orderless-prefixes
+     orderless-initialism
+     orderless-regexp
+   ;; orderless-flex                       ; Basically fuzzy finding
+   ;; orderless-strict-leading-initialism
+   ;; orderless-strict-initialism
+   ;; orderless-strict-full-initialism
+   ;; orderless-without-literal          ; Recommended for dispatches instead
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles partial-completion)))))
+   ))
+
+
+#+end_src
+
+
+
+** Consult
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package consult
+  :after vertico
+  :ensure t
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+  :init
+  (setq register-preview-delay 0.5
+        register-preview-function #'consult-register-format)
+
+  ;; Optionally tweak the register preview window.
+  ;; This adds thin lines, sorting and hides the mode line of the window.
+  (advice-add #'register-preview :override #'consult-register-window)
+
+  ;; Use Consult to select xref locations with preview
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+
+  ;; Configure other variables and modes in the :config section,
+  ;; after lazily loading the package.
+  :config
+
+  ;; Optionally configure preview. The default value
+  ;; is 'any, such that any key triggers the preview.
+  ;; (setq consult-preview-key 'any)
+  ;; (setq consult-preview-key "M-.")
+  ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
+  ;; For some commands and buffer sources it is useful to configure the
+  ;; :preview-key on a per-command basis using the `consult-customize' macro.
+  (consult-customize
+   consult-theme :preview-key '(:debounce 0.2 any)
+   consult-ripgrep consult-git-grep consult-grep
+   consult-bookmark consult-recent-file consult-xref
+   consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; :preview-key "M-."
+   :preview-key '(:debounce 0.4 any))
+
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; "C-+"
+)
+#+end_src
+
+
+** Marginalia
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package marginalia
+  :after vertico
+  :ensure t
+;;   (:keymaps 'minibuffer-local-map
+;;   "M-A" 'marginalia-cycle)
+  :custom
+  (marginalia-annotators '(marginalia-annotators-heavy marginalia-annotators-light nil))
+  :init
+  (marginalia-mode))
+
+
+(use-package all-the-icons-completion
+  :ensure t
+  :after (marginalia all-the-icons)
+  :hook (marginalia-mode . all-the-icons-completion-marginalia-setup)
+  :init
+  (all-the-icons-completion-mode))
+
+#+end_src
+
+
+
+** Embark
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package embark
+  :ensure t
+
+  :bind
+  (("C-." . embark-act)         ;; pick some comfortable binding
+   ("C-;" . embark-dwim)        ;; good alternative: M-.
+   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+  :init
+
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+
+  ;; Show the Embark target at point via Eldoc. You may adjust the
+  ;; Eldoc strategy, if you want to see the documentation from
+  ;; multiple providers. Beware that using this can be a little
+  ;; jarring since the message shown in the minibuffer can be more
+  ;; than one line, causing the modeline to move up and down:
+
+  ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+  ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+  :config
+
+  ;; Hide the mode line of the Embark live/completions buffers
+  (add-to-list 'display-buffer-alist
+               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                 nil
+                 (window-parameters (mode-line-format . none)))))
+
+;; Consult users will also want the embark-consult package.
+(use-package embark-consult
+  :ensure t ; only need to install it, embark loads it after consult if found
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
+
+#+end_src
+
+
+
+
+** Corfu
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+
+(use-package corfu
+  :hook (lsp-completion-mode . kb/corfu-setup-lsp) ; Use corfu for lsp completion
+  :ensure t
+  (:keymaps 'corfu-map
+   :states 'insert
+   "C-n" #'corfu-next
+   "C-p" #'corfu-previous
+   "<escape>" #'corfu-quit
+   "<return>" #'corfu-insert
+   "H-SPC" #'corfu-insert-separator
+   ;; "SPC" #'corfu-insert-separator ; Use when `corfu-quit-at-boundary' is non-nil
+   "M-d" #'corfu-show-documentation
+   "C-g" #'corfu-quit
+   "M-l" #'corfu-show-location)
+  :custom
+  ;; Works with `indent-for-tab-command'. Make sure tab doesn't indent when you
+  ;; want to perform completion
+  (tab-always-indent 'complete)
+  (completion-cycle-threshold nil)      ; Always show candidates in menu
+
+  (corfu-auto nil)
+  (corfu-auto-prefix 2)
+  (corfu-auto-delay 0.25)
+
+  (corfu-min-width 80)
+  (corfu-max-width corfu-min-width)     ; Always have the same width
+  (corfu-count 14)
+  (corfu-scroll-margin 4)
+  (corfu-cycle nil)
+
+  ;; `nil' means to ignore `corfu-separator' behavior, that is, use the older
+  ;; `corfu-quit-at-boundary' = nil behavior. Set this to separator if using
+  ;; `corfu-auto' = `t' workflow (in that case, make sure you also set up
+  ;; `corfu-separator' and a keybind for `corfu-insert-separator', which my
+  ;; configuration already has pre-prepared). Necessary for manual corfu usage with
+  ;; orderless, otherwise first component is ignored, unless `corfu-separator'
+  ;; is inserted.
+  (corfu-quit-at-boundary nil)
+  (corfu-separator ?\s)            ; Use space
+  (corfu-quit-no-match 'separator) ; Don't quit if there is `corfu-separator' inserted
+  (corfu-preview-current 'insert)  ; Preview first candidate. Insert on input if only one
+  (corfu-preselect-first t)        ; Preselect first candidate?
+
+  ;; Other
+  (corfu-echo-documentation nil)        ; Already use corfu-doc
+  (lsp-completion-provider :none)       ; Use corfu instead for lsp completions
+  :init
+  (global-corfu-mode)
+  :config
+  ;; NOTE 2022-03-01: This allows for a more evil-esque way to have
+  ;; `corfu-insert-separator' work with space in insert mode without resorting to
+  ;; overriding keybindings with `general-override-mode-map'. See
+  ;; https://github.com/minad/corfu/issues/12#issuecomment-869037519
+  ;; Alternatively, add advice without `general.el':
+  ;; (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  ;; (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  ;; (general-add-advice '(corfu--setup corfu--teardown) :after 'evil-normalize-keymaps)
+  ;; (evil-make-overriding-map corfu-map)
+
+  ;; Enable Corfu more generally for every minibuffer, as long as no other
+  ;; completion UI is active. If you use Mct or Vertico as your main minibuffer
+  ;; completion UI. From
+  ;; https://github.com/minad/corfu#completing-with-corfu-in-the-minibuffer
+  (defun corfu-enable-always-in-minibuffer ()
+    "Enable Corfu in the minibuffer if Vertico/Mct are not active."
+    (unless (or (bound-and-true-p mct--active) ; Useful if I ever use MCT
+                (bound-and-true-p vertico--input))
+      (setq-local corfu-auto nil)       ; Ensure auto completion is disabled
+      (corfu-mode 1)))
+  (add-hook 'minibuffer-setup-hook #'corfu-enable-always-in-minibuffer 1)
+
+  ;; Setup lsp to use corfu for lsp completion
+  (defun kb/corfu-setup-lsp ()
+    "Use orderless completion style with lsp-capf instead of the
+default lsp-passthrough."
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))))
+
+(use-package kind-icon
+  :after corfu
+  :ensure t
+  :custom
+  (kind-icon-use-icons t)
+  (kind-icon-default-face 'corfu-default) ; Have background color be the same as `corfu' face background
+  (kind-icon-blend-background nil)  ; Use midpoint color between foreground and background colors ("blended")?
+  (kind-icon-blend-frac 0.08)
+
+  ;; NOTE 2022-02-05: `kind-icon' depends `svg-lib' which creates a cache
+  ;; directory that defaults to the `user-emacs-directory'. Here, I change that
+  ;; directory to a location appropriate to `no-littering' conventions, a
+  ;; package which moves directories of other packages to sane locations.
+  ;;(svg-lib-icons-dir (no-littering-expand-var-file-name "svg-lib/cache/")) ; Change cache dir
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter) ; Enable `kind-icon'
+
+  ;; Add hook to reset cache so the icon colors match my theme
+  ;; NOTE 2022-02-05: This is a hook which resets the cache whenever I switch
+  ;; the theme using my custom defined command for switching themes. If I don't
+  ;; do this, then the backgound color will remain the same, meaning it will not
+  ;; match the background color corresponding to the current theme. Important
+  ;; since I have a light theme and dark theme I switch between. This has no
+  ;; function unless you use something similar
+  (add-hook 'kb/themes-hooks #'(lambda () (interactive) (kind-icon-reset-cache))))
+
+
+#+end_src
+
+
+
+
+** Cape TODO the bind map
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package cape
+  :after corfu
+  :ensure t
+  ;; Bind prefix keymap providing all Cape commands under a mnemonic key.
+  ;; Press C-c p ? to for help.
+;;  :bind ("C-c p" . cape-prefix-map) ;; Alternative keys: M-p, M-+, ...
+  ;; Alternatively bind Cape commands individually.
+  ;; :bind (("C-c p d" . cape-dabbrev)
+  ;;        ("C-c p h" . cape-history)
+  ;;        ("C-c p f" . cape-file)
+  ;;        ...)
+  :init
+  ;; Add to the global default value of `completion-at-point-functions' which is
+  ;; used by `completion-at-point'.  The order of the functions matters, the
+  ;; first function returning a result wins.  Note that the list of buffer-local
+  ;; completion functions takes precedence over the global list.
+  (add-hook 'completion-at-point-functions #'cape-dabbrev)
+  (add-hook 'completion-at-point-functions #'cape-file)
+  (add-hook 'completion-at-point-functions #'cape-elisp-block)
+  ;; (add-hook 'completion-at-point-functions #'cape-history)
+  ;; ...
+)
+
+
+#+end_src
+
+
+
+** WHICH-KEY
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package which-key
+  :ensure t
+  :init
+    (which-key-mode 1)
+  :diminish
+  :config
+  (setq which-key-side-window-location 'bottom
+	  which-key-sort-order #'which-key-key-order-alpha
+	  which-key-allow-imprecise-window-fit nil
+	  which-key-sort-uppercase-first nil
+	  which-key-add-column-padding 1
+	  which-key-max-display-columns nil
+	  which-key-min-display-lines 6
+	  which-key-side-window-slot -10
+	  which-key-side-window-max-height 0.25
+	  which-key-idle-delay 0.8
+	  which-key-max-description-length 25
+	  which-key-allow-imprecise-window-fit nil
+	  which-key-separator " → " ))
+#+end_src
+
+
+
+* Post-Init Configuration
+  This section will generate the `post-init.el` file.
+ 
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+  ;;; post-init.el --- Early configurations -*- no-byte-compile: t; lexical-binding: t; -*-
+#+end_src
+
+** DASHBOARD
+Emacs Dashboard is an extensible startup screen showing you recent files, bookmarks, agenda items and an Emacs banner.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package dashboard
+  :demand t 
+  :init
+  (setq initial-buffer-choice 'dashboard-open)
+  (setq dashboard-set-heading-icons t)
+  (setq dashboard-set-file-icons t)
+  (setq dashboard-banner-logo-title "Eheshiu's cute EMACS!")
+  (setq dashboard-startup-banner "~/.emacs.d/var/images/catboy050.png")  ;; use custom image as banner
+  (setq dashboard-center-content t) ;; set to 't' for centered content
+  (setq dashboard-items '((recents . 5)
+                          (agenda . 5 )
+                          (bookmarks . 3)
+                          (projects . 3)
+                          (registers . 3)))
+  :custom 
+  (dashboard-modify-heading-icons '((recents . "file-text")
+				      (bookmarks . "book")))
+  :config
+  (dashboard-setup-startup-hook))
+
+#+end_src
+
+
+** DIRED
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+(use-package dired-open
+  :config
+  (setq dired-open-extensions '(("gif" . "sxiv")
+                                ("jpg" . "sxiv")
+                                ("png" . "sxiv")
+                                ("mkv" . "mpv")
+                                ("mp4" . "mpv"))))
+
+(use-package peep-dired
+  :after dired
+  :hook (evil-normalize-keymaps . peep-dired-hook)
+  :config
+    (evil-define-key 'normal dired-mode-map (kbd "h") 'dired-up-directory)
+    (evil-define-key 'normal dired-mode-map (kbd "l") 'dired-open-file) ; use dired-find-file instead if not using dired-open package
+    (evil-define-key 'normal peep-dired-mode-map (kbd "j") 'peep-dired-next-file)
+    (evil-define-key 'normal peep-dired-mode-map (kbd "k") 'peep-dired-prev-file)
+)
+
+#+end_src
+
+** DRAG-STUFF
+[[https://github.com/rejeep/drag-stuff.el][Drag Stuff]] is a minor mode for Emacs that makes it possible to drag stuff (words, region, lines) around in Emacs.  When 'drag-stuff-define-keys' is enabled, then the following keybindings are set: M-up, M-down, M-left, and M-right.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/pre-init.el
+(use-package drag-stuff
+  :init
+  (drag-stuff-global-mode 1)
+  (drag-stuff-define-keys))
+
+#+end_src
+
+** EDIFF
+'ediff' is a diff program that is built into Emacs.  By default, 'ediff' splits files vertically and places the 'help' frame in its own window.  I have changed this so the two files are split horizontally and the 'help' frame appears as a lower split within the existing window.  Also, I create my own 'dt-ediff-hook' where I add 'j/k' for moving to next/prev diffs.  By default, this is set to 'n/p'.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(setq ediff-split-window-function 'split-window-horizontally
+      ediff-window-setup-function 'ediff-setup-windows-plain)
+
+(defun dt-ediff-hook ()
+  (ediff-setup-keymap)
+  (define-key ediff-mode-map "j" 'ediff-next-difference)
+  (define-key ediff-mode-map "k" 'ediff-previous-difference))
+
+(add-hook 'ediff-mode-hook 'dt-ediff-hook)
+#+end_src 
+
+** ELFEED
+An RSS newsfeed reader for Emacs.  Move through the articles with 'j/k'.  Move through the stories with 'CTRL j/k' when in other frame.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+(use-package elfeed
+  :config
+  (setq elfeed-search-feed-face ":foreground #ffffff :weight bold"
+        elfeed-feeds (quote
+                       (("https://www.reddit.com/r/linux.rss" reddit linux)
+                        ("https://www.reddit.com/r/commandline.rss" reddit commandline)
+                        ("https://www.reddit.com/r/distrotube.rss" reddit distrotube)
+                        ("https://www.reddit.com/r/emacs.rss" reddit emacs)
+                        ("https://www.gamingonlinux.com/article_rss.php" gaming linux)
+                        ("https://hackaday.com/blog/feed/" hackaday linux)
+                        ("https://opensource.com/feed" opensource linux)
+                        ("https://linux.softpedia.com/backend.xml" softpedia linux)
+                        ("https://itsfoss.com/feed/" itsfoss linux)
+                        ("https://www.zdnet.com/topic/linux/rss.xml" zdnet linux)
+                        ("https://www.phoronix.com/rss.php" phoronix linux)
+                        ("http://feeds.feedburner.com/d0od" omgubuntu linux)
+                        ("https://www.computerworld.com/index.rss" computerworld linux)
+                        ("https://www.networkworld.com/category/linux/index.rss" networkworld linux)
+                        ("https://www.techrepublic.com/rssfeeds/topic/open-source/" techrepublic linux)
+                        ("https://betanews.com/feed" betanews linux)
+                        ("http://lxer.com/module/newswire/headlines.rss" lxer linux)
+                        ("https://distrowatch.com/news/dwd.xml" distrowatch linux)))))
+ 
+
+(use-package elfeed-goodies
+  :init
+  (elfeed-goodies/setup)
+  :config
+  (setq elfeed-goodies/entry-pane-size 0.5))
+
+#+end_src
+
+** ERADIO
+[[https://github.com/olavfosse/eradio][eradio]] is a simple Internet radio player for Emacs.  It uses 'vlc as its backend by default, but you can change the =eradio-player= variable to use another multimedia player.  I have set eradio to use 'mpv' instead of 'vlc' because it supports more types of Internet radio streams.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package eradio
+  :init
+  (setq eradio-player '("mpv" "--no-video" "--no-terminal"))
+  :config
+  (setq eradio-channels '(("Totally 80s FM" . "https://zeno.fm/radio/totally-80s-fm/")
+                          ("Oldies Radio 50s-60s" . "https://zeno.fm/radio/oldies-radio-50s-60s/")
+                          ("Oldies Radio 70s" . "https://zeno.fm/radio/oldies-radio-70s/")
+                          ("Unlimited 80s" . "https://zeno.fm/radio/unlimited80s/")
+                          ("80s Hits" . "https://zeno.fm/radio/80shits/")
+                          ("90s Hits" . "https://zeno.fm/radio/90s_HITS/")
+                          ("2000s Pop" . "https://zeno.fm/radio/2000s-pop/")
+                          ("The 2000s" . "https://zeno.fm/radio/the-2000s/")
+                          ("Hits 2010s" . "https://zeno.fm/radio/helia-hits-2010/")
+                          ("Classical Radio" . "https://zeno.fm/radio/classical-radio/")
+                          ("Classical Relaxation" . "https://zeno.fm/radio/radio-christmas-non-stop-classical/")
+                          ("Classic Rock" . "https://zeno.fm/radio/classic-rockdnb2sav8qs8uv/")
+                          ("Gangsta49" . "https://zeno.fm/radio/gangsta49/")
+                          ("HipHop49" . "https://zeno.fm/radio/hiphop49/")
+                          ("Madhouse Country Radio" . "https://zeno.fm/radio/madhouse-country-radio/")
+                          ("PopMusic" . "https://zeno.fm/radio/popmusic74vyurvmug0uv/")
+                          ("PopStars" . "https://zeno.fm/radio/popstars/")
+                          ("RadioMetal" . "https://zeno.fm/radio/radio-metal/")
+                          ("RocknRoll Radio" . "https://zeno.fm/radio/rocknroll-radio994c7517qs8uv/"))))
+#+end_src
+
+
+** FLYCHECK
+Install =luacheck= from your Linux distro's repositories for flycheck to work correctly with lua files.  Install =python-pylint= for flycheck to work with python files.  Haskell works with flycheck as long as =haskell-ghc= or =haskell-stack-ghc= is installed.  For more information on language support for flycheck, [[https://www.flycheck.org/en/latest/languages.html][read this]].
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package flycheck
+  :ensure t
+  :defer t
+  :diminish
+  :init (global-flycheck-mode))
+
+#+end_src
+
+** FLYSPELL
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+;; (use-package flyspell
+;;   :custom
+;;   (ispell-program-name "hunspell")
+;;   (ispell-dictionary ews-hunspell-dictionaries)
+;;   (flyspell-mark-duplications-flag nil) ;; Writegood mode does this
+;;   (org-fold-core-style 'overlays) ;; Fix Org mode bug
+;;   :config
+;;   (ispell-set-spellchecker-params)
+;;   (ispell-hunspell-add-multi-dic ews-hunspell-dictionaries)
+;;   :hook
+;;   (text-mode . flyspell-mode)
+;;   :bind
+;;   (("C-c w s s" . ispell)
+;;    ("C-;"       . flyspell-auto-correct-previous-word)))
+
+#+end_src
+
+** Dictionary + Thesaurus
+
+
+#+BEGIN_SRC emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+;; (use-package dictionary
+;;   :custom
+;;   (dictionary-server "dict.org")
+;;   :bind
+;;   (("C-c w s d" . dictionary-lookup-definition)))
+;; 
+;; (use-package powerthesaurus
+;;   :bind
+;;   (("C-c w s p" . powerthesaurus-transient))
+;;)
+#+end_src
+
+** UNDO TREE 
+#+BEGIN_SRC emacs-lisp :tangle ~/.emacs.d/post-init.el
+  (use-package undo-tree
+    :diminish undo-tree-mode
+    :config
+    (global-undo-tree-mode)
+    :custom
+    (undo-tree-auto-save-history nil)
+    :bind
+    (("C-c w u" . undo-tree-visualise)))
+#+END_SRC
+
+
+** GIT PROGRAMS
+*** Git Time Machine
+[[https://github.com/emacsmirror/git-timemachine][git-timemachine]] is a program that allows you to move backwards and forwards through a file's commits.  'SPC g t' will open the time machine on a file if it is in a git repo.  Then, while in normal mode, you can use 'CTRL-j' and 'CTRL-k' to move backwards and forwards through the commits.
+
+
+# #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+# (use-package git-timemachine
+#   :after git-timemachine
+#   :hook (evil-normalize-keymaps . git-timemachine-hook)
+#   :config
+#     (evil-define-key 'normal git-timemachine-mode-map (kbd "C-j") 'git-timemachine-show-previous-revision)
+#     (evil-define-key 'normal git-timemachine-mode-map (kbd "C-k") 'git-timemachine-show-next-revision)
+# )
+# #+end_src
+# 
+# *** Magit
+# [[https://magit.vc/manual/][Magit]] is a full-featured git client for Emacs.
+# 
+# #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+# (use-package magit)
+# 
+# #+end_src
+
+** HIGHLIGHT TODO
+Adding highlights to TODO and related words.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package hl-todo
+  :hook ((org-mode . hl-todo-mode)
+         (prog-mode . hl-todo-mode))
+  :config
+  (setq hl-todo-highlight-punctuation ":"
+        hl-todo-keyword-faces
+        `(("TODO"       warning bold)
+          ("FIXME"      error bold)
+          ("HACK"       font-lock-constant-face bold)
+          ("REVIEW"     font-lock-keyword-face bold)
+          ("NOTE"       success bold)
+          ("DEPRECATED" font-lock-doc-face bold))))
+
+#+end_src
+
+
+** LANGUAGE SUPPORT
+Emacs has built-in programming language modes for Lisp, Scheme, DSSSL, Ada, ASM, AWK, C, C++, Fortran, Icon, IDL (CORBA), IDLWAVE, Java, Javascript, M4, Makefiles, Metafont, Modula2, Object Pascal, Objective-C, Octave, Pascal, Perl, Pike, PostScript, Prolog, Python, Ruby, Simula, SQL, Tcl, Verilog, and VHDL.  Other languages will require you to install additional modes.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+;;(use-package dart-mode)
+;;(use-package haskell-mode)
+;;(use-package lua-mode)
+;;(use-package php-mode)
+
+#+end_src
+
+
+** NEOTREE
+Neotree is a file tree viewer.  When you open neotree, it jumps to the current file thanks to neo-smart-open.  The neo-window-fixed-size setting makes the neotree width be adjustable.  NeoTree provides following themes: classic, ascii, arrow, icons, and nerd.  Theme can be config'd by setting "two" themes for neo-
+theme: one for the GUI and one for the terminal.  I like to use 'SPC t' for 'toggle' keybindings, so I have used 'SPC t n' for toggle-neotree.
+
+| COMMAND        | DESCRIPTION               | KEYBINDING |
+|----------------+---------------------------+------------|
+| neotree-toggle | /Toggle neotree/            | SPC t n    |
+| neotree- dir   | /Open directory in neotree/ | SPC d n    |
+
+#+BEGIN_SRC emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package neotree
+  :config
+  (setq neo-smart-open t
+        neo-show-hidden-files t
+        neo-window-width 55
+        neo-window-fixed-size nil
+        inhibit-compacting-font-caches t
+        projectile-switch-project-action 'neotree-projectile-action) 
+        ;; truncate long file names in neotree
+        (add-hook 'neo-after-create-hook
+           #'(lambda (_)
+               (with-current-buffer (get-buffer neo-buffer-name)
+                 (setq truncate-lines t)
+                 (setq word-wrap nil)
+                 (make-local-variable 'auto-hscroll-mode)
+                 (setq auto-hscroll-mode nil)))))
+
+#+end_src
+
+** ORG MODE
+*** Diminish Org Indent Mode
+Removes "Ind" from showing in the modeline.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(eval-after-load 'org-indent '(diminish 'org-indent-mode))
+
+#+end_src
+
+*** Org-Tempo
+Org-tempo is not a separate package but a module within org that can be enabled.  Org-tempo allows for '<s' followed by TAB to expand to a begin_src tag.  Other expansions available include:
+
+| Typing the below + TAB | Expands to ...                          |
+|------------------------+-----------------------------------------|
+| <a                     | '#+BEGIN_EXPORT ascii' … '#+END_EXPORT  |
+| <c                     | '#+BEGIN_CENTER' … '#+END_CENTER'       |
+| <C                     | '#+BEGIN_COMMENT' … '#+END_COMMENT'     |
+| <e                     | '#+BEGIN_EXAMPLE' … '#+END_EXAMPLE'     |
+| <E                     | '#+BEGIN_EXPORT' … '#+END_EXPORT'       |
+| <h                     | '#+BEGIN_EXPORT html' … '#+END_EXPORT'  |
+| <l                     | '#+BEGIN_EXPORT latex' … '#+END_EXPORT' |
+| <q                     | '#+BEGIN_QUOTE' … '#+END_QUOTE'         |
+| <s                     | '#+BEGIN_SRC' … '#+END_SRC'             |
+| <v                     | '#+BEGIN_VERSE' … '#+END_VERSE'         |
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el 
+(require 'org-tempo)
+#+end_src
+
+*** Preserve Indentation On Org-Babel-Tangle
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(setq org-src-preserve-indentation t)
+
+#+end_src
+
+*** Toc-Org
+Allows us to create a Table of Contents in our Org docs.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package toc-org
+    :commands toc-org-enable
+    :init (add-hook 'org-mode-hook 'toc-org-enable))
+#+end_src
+ 
+*** Org customizations
+# #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+# 
+# (use-package org
+#   :custom
+#   (org-startup-indented t)
+#   (org-hide-emphasis-markers t)
+#   (org-startup-with-inline-images t)
+#   (org-image-actual-width '(450))
+#   (org-fold-catch-invisible-edits 'error)
+#   (org-pretty-entities t)
+#   (org-use-sub-superscripts "{}")
+#   (org-id-link-to-org-use-id t)
+#   (org-fold-catch-invisible-edits 'show))
+ #+end_src
+
+*** ORG-MODERN
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+
+(use-package org-modern
+  ;; :custom
+  ;; (org-modern-keyword nil)
+  ;; (org-modern-checkbox nil)
+  ;; (org-modern-table nil)
+  :config
+  (setq
+    ;; Edit settings
+
+    org-auto-align-tags nil
+    org-tags-column 0
+    org-catch-invisible-edits 'show-and-error
+    org-insert-heading-respect-content t
+  
+    org-modern-star 'replace
+
+  ;;   org-hide-emphasis-markers t
+  ;;  org-pretty-entities t
+
+    ;; Agenda styling
+    org-agenda-tags-column 0
+    org-agenda-block-separator ?─
+    org-agenda-time-grid
+    '((daily today require-timed)
+      (800 1000 1200 1400 1600 1800 2000)
+      " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+    org-agenda-current-time-string
+    "◀── now ─────────────────────────────────────────────────")
+
+    ;; Ellipsis styling
+    (setq org-ellipsis "…")
+    (set-face-attribute 'org-ellipsis nil :inherit 'default :box nil)
+    (global-org-modern-mode))
+
+
+
+
+(use-package org-modern-indent
+  :ensure (org-modern-indent :host github :repo "jdtsmith/org-modern-indent")
+  :hook (org-mode . org-modern-indent-mode)
+ )
+    
+#+end_src
+
+*** ORG-MENU
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+(elpaca
+  '(org-menu
+    :host github
+    :repo "sheijk/org-menu"))
+#+end_src
+
+*** ORG-APPEAR
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+(use-package org-appear
+ :after org
+ :hook (org-mode-hook . org-appear-mode))
+
+#+end_src
+
+** Write Good Mode
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+(use-package writegood-mode
+  ;; :bind
+ ;; (("C-c w s r" . writegood-reading-ease)
+ ;;  ("C-c w s l" . writegood-grade-level))
+  ;; :hook
+  ;; (text-mode . writegood-mode)
+)
+#+end_src
+
+** PDFs
+[[https://github.com/vedang/pdf-tools][pdf-tools]] is a replacement of DocView for viewing PDF files inside Emacs.  It uses the =poppler= library, which also means that 'pdf-tools' can by used to modify PDFs.  I use to disable 'display-line-numbers-mode' in 'pdf-view-mode' because line numbers crash it.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package pdf-tools
+  :defer t
+  :commands (pdf-loader-install)
+  :mode "\\.pdf\\'"
+  ;; :bind (: pdf-view-mode-map
+  ;;             ("j" . pdf-view-next-line-or-next-page)
+  ;;             ("k" . pdf-view-previous-line-or-previous-page)
+  ;;             ("C-=" . pdf-view-enlarge)
+  ;;             ("C--" . pdf-view-shrink))
+  :init (pdf-loader-install)
+  :config (add-to-list 'revert-without-query ".pdf"))
+
+(add-hook 'pdf-view-mode-hook #'(lambda () (interactive) (display-line-numbers-mode -1)
+             (blink-cursor-mode -1)
+             (doom-modeline-mode -1)))
+#+end_src
+
+** PERSPECTIVE
+[[https://github.com/nex3/perspective-el][Perspective]] provides multiple named workspaces (or "perspectives") in Emacs, similar to multiple desktops in window managers.  Each perspective has its own buffer list and its own window layout, along with some other isolated niceties, like the [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Xref.html][xref]] ring.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package perspective
+  :custom
+  ;; NOTE! I have also set 'SCP =' to open the perspective menu.
+  ;; I'm only setting the additional binding because setting it
+  ;; helps suppress an annoying warning message.
+  (persp-mode-prefix-key (kbd "C-c M-p"))
+  :init 
+  (persp-mode)
+  :config
+  ;; Sets a file to write to when we save states
+  (setq persp-state-default-file "~/.emacs.d/sessions"))
+
+;; This will group buffers by persp-name in ibuffer.
+(add-hook 'ibuffer-hook
+          (lambda ()
+            (persp-ibuffer-set-filter-groups)
+            (unless (eq ibuffer-sorting-mode 'alphabetic)
+              (ibuffer-do-sort-by-alphabetic))))
+
+;; Automatically save perspective states to file when Emacs exits.
+(add-hook 'kill-emacs-hook #'persp-state-save)
+
+#+end_src
+
+** PROJECTILE
+[[https://github.com/bbatsov/projectile][Projectile]] is a project interaction library for Emacs.  It should be noted that many projectile commands do not work if you have set "fish" as the "shell-file-name" for Emacs.  I had initially set "fish" as the "shell-file-name" in the Vterm section of this config, but oddly enough I changed it to "bin/sh" and projectile now works as expected, and Vterm still uses "fish" because my default user "sh" on my Linux system is "fish".
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package projectile
+  :config
+  (projectile-mode 1))
+#+end_src
+
+** RAINBOW DELIMITERS
+Adding rainbow coloring to parentheses.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package rainbow-delimiters
+  :hook ((emacs-lisp-mode . rainbow-delimiters-mode)
+         (clojure-mode . rainbow-delimiters-mode)))
+
+#+end_src
+
+** RAINBOW MODE
+Display the actual color as a background for any hex color value (ex. #ffffff).  The code block below enables rainbow-mode in all programming modes (prog-mode) as well as org-mode, which is why rainbow works in this document.  
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package rainbow-mode
+  :diminish
+  :hook org-mode prog-mode)
+#+end_src
+
+
+** SHELLS AND TERMINALS
+In my configs, all of my shells (bash, fish, zsh and the ESHELL) require my shell-color-scripts-git package to be installed.  On Arch Linux, you can install it from the AUR.  Otherwise, go to my shell-color-scripts repository on GitLab to get it.
+
+*** Eshell
+Eshell is an Emacs 'shell' that is written in Elisp.
+
+# #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+# (use-package eshell-toggle
+#   :custom
+#   (eshell-toggle-size-fraction 3)
+#   (eshell-toggle-use-projectile-root t)
+#   (eshell-toggle-run-command nil)
+#   (eshell-toggle-init-function #'eshell-toggle-init-ansi-term))
+# 
+#   (use-package eshell-syntax-highlighting
+#     :after esh-mode
+#     :config
+#     (eshell-syntax-highlighting-global-mode +1))
+# 
+#   ;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
+#   ;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
+#   ;; eshell-aliases-file -- sets an aliases file for the eshell.
+# 
+#   (setq eshell-rc-script (concat user-emacs-directory "var/eshell/profile")
+#         eshell-aliases-file (concat user-emacs-directory "var/eshell/aliases")
+#         eshell-history-size 5000
+#         eshell-buffer-maximum-lines 5000
+#         eshell-hist-ignoredups t
+#         eshell-scroll-to-bottom-on-input t
+#         eshell-destroy-buffer-when-process-dies t
+#         eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
+# #+end_src
+# 
+# *** Vterm
+# Vterm is a terminal emulator within Emacs.  The 'shell-file-name' setting sets the shell to be used in M-x shell, M-x term, M-x ansi-term and M-x vterm.  By default, the shell is set to 'fish' but could change it to 'bash' or 'zsh' if you prefer.
+# 
+# #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+# (use-package vterm
+# :config
+# (setq shell-file-name "/bin/sh"
+#       vterm-max-scrollback 5000))
+# #+end_src
+# 
+# *** Vterm-Toggle 
+# [[https://github.com/jixiuf/vterm-toggle][vterm-toggle]] toggles between the vterm buffer and whatever buffer you are editing.
+# 
+# #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+# (use-package vterm-toggle
+#   :after vterm
+#   :config
+#   ;; When running programs in Vterm and in 'normal' mode, make sure that ESC
+#   ;; kills the program as it would in most standard terminal programs.
+#   (evil-define-key 'normal vterm-mode-map (kbd "<escape>") 'vterm--self-insert)
+#   (setq vterm-toggle-fullscreen-p nil)
+#   (setq vterm-toggle-scope 'project)
+#   (add-to-list 'display-buffer-alist
+#                '((lambda (buffer-or-name _)
+#                      (let ((buffer (get-buffer buffer-or-name)))
+#                        (with-current-buffer buffer
+#                          (or (equal major-mode 'vterm-mode)
+#                              (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
+#                   (display-buffer-reuse-window display-buffer-at-bottom)
+#                   ;;(display-buffer-reuse-window display-buffer-in-direction)
+#                   ;;display-buffer-in-direction/direction/dedicated is added in emacs27
+#                   ;;(direction . bottom)
+#                   ;;(dedicated . t) ;dedicated is supported in emacs27
+#                   (reusable-frames . visible)
+#                   (window-height . 0.4))))
+# 
+# #+end_src
+
+** Sudo EDIT
+[[https://github.com/nflath/sudo-edit][sudo-edit]] gives us the ability to open files with sudo privileges or switch over to editing with sudo privileges if we initially opened the file without such privileges.
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package sudo-edit)
+#+end_src
+
+** TLDR
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(use-package tldr)
+
+#+end_src
+
+
+** TRANSIENT
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+;; Now you can use use-package to install and configure packages
+
+
+(use-package transient)       
+   
+(elpaca-wait)
+ 
+(transient-define-prefix my-transient-menu ()
+  "A sample transient menu."
+  [["Basic Commands"
+    ("SPC" "consult-outl" (lambda () (interactive) (consult-outline)))
+    ("o" "org-menu" (lambda () (interactive) (org-menu)))]
+   ["Other Commands"
+      ("TAB" "next window" next-window-any-frame)
+    ("y" "Action Y" (lambda () (interactive) (message "Action Y executed!")))]
+   ["Exit"
+    ("<escape>" "" transient-quit-one)]])
+#+end_src
+
+** MOODY
+
+ #+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+
+;; Define the function to change the modeline color based on the meow state
+(defun my-update-modeline-color-based-on-meow-state ()
+  "Update the moody modeline color based on the state of Meow."
+  (let ((insert-state-color  (modus-themes-get-color-value 'bg-sage))  ;; Green color for insert mode
+        ;; Use modus theme aliases for the modeline in normal state
+        (normal-state-color (modus-themes-get-color-value 'bg-mode-line-active)))
+    (if (meow-insert-mode-p)
+        ;; Change to green in insert mode
+        (set-face-attribute 'mode-line nil :background insert-state-color)
+      ;; Revert to the original alias from the Modus theme
+      (set-face-attribute 'mode-line nil :background normal-state-color))))
+
+;; Add the function to the meow state change hooks
+(add-hook 'meow-insert-enter-hook #'my-update-modeline-color-based-on-meow-state)
+(add-hook 'meow-insert-exit-hook #'my-update-modeline-color-based-on-meow-state)
+
+;; Optionally hook into normal mode to ensure the color is reset there too
+(add-hook 'meow-normal-enter-hook #'my-update-modeline-color-based-on-meow-state)
+
+(use-package moody
+  :config
+  (moody-replace-mode-line-front-space)
+  (moody-replace-mode-line-buffer-identification)
+  (moody-replace-vc-mode))
+
+(use-package minions
+:config
+	(setq minions-mode-line-lighter ""
+				minions-mode-line-delimiters '("" . ""))
+ (minions-mode 1))
+
+#+end_src
+
+
+* Post hooks
+
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+;; Auto-revert in Emacs is a feature that automatically updates the
+;; contents of a buffer to reflect changes made to the underlying file
+;; on disk.
+(add-hook 'after-init-hook #'global-auto-revert-mode)
+
+;; recentf is an Emacs package that maintains a list of recently
+;; accessed files, making it easier to reopen files you have worked on
+;; recently.
+(add-hook 'after-init-hook #'recentf-mode)
+
+;; savehist is an Emacs feature that preserves the minibuffer history between
+;; sessions. It saves the history of inputs in the minibuffer, such as commands,
+;; search strings, and other prompts, to a file. This allows users to retain
+;; their minibuffer history across Emacs restarts.
+(add-hook 'after-init-hook #'savehist-mode)
+
+;; save-place-mode enables Emacs to remember the last location within a file
+;; upon reopening. This feature is particularly beneficial for resuming work at
+;; the precise point where you previously left off.
+(add-hook 'after-init-hook #'save-place-mode)
+#+end_src
+
+** TEST
+#+begin_src emacs-lisp :tangle ~/.emacs.d/post-init.el
+(defun reader ()
+  (interactive)
+  (let ((choices '(("First"  . "Hi!")
+                   ("Second" . 'second-choice)
+                   ("Third"  . 'third-choice))))
+    (alist-get
+     (completing-read "Choose: " choices)
+     choices nil nil 'message)))
+
+(defun github-code-search ()
+  "Search code on github for a given language."
+  (interactive)
+  (let ((language (completing-read
+                   "Language: "
+                   '("Emacs Lisp" "Python"  "Clojure" "R")))
+        (code (read-string "Code: ")))
+    (browse-url
+     (concat "https://github.com/search?l=" language
+             "&type=code&q=" code))))
+  
+(defun dm-search ()
+  "Search various search engines."
+  (interactive)
+  (let ((engine (completing-read
+                 "Search Engine: "
+                 '("Arch Wiki" 
+                   "Bing"
+                   "Google"
+                   "Wikipedia")))
+        (query (read-string "Query: ")))
+    (if (equal engine "Google")
+      (browse-url
+       (concat "https://www.google.com/search?q=" query)))))
+
+(defun dt/key-value-completing (choice)                                     
+  (interactive
+   (list
+    (let ((completions '(("1" "One") 
+                         ("2" "Two")
+                         ("3" "Three"))))              
+      (cadr (assoc (completing-read "Choose: " completions) completions)))))
+  (message "You choose `%s'" choice))
+
+#+end_src

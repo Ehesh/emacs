@@ -13,18 +13,20 @@
  '(smtpmail-smtp-server "smtp.1and1.com")
  '(smtpmail-smtp-service 587))
 
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(org-level-1 ((t (:inherit outline-1 :height 1.7))))
- '(org-level-2 ((t (:inherit outline-2 :height 1.6))))
- '(org-level-3 ((t (:inherit outline-3 :height 1.5))))
- '(org-level-4 ((t (:inherit outline-4 :height 1.4))))
- '(org-level-5 ((t (:inherit outline-5 :height 1.3))))
- '(org-level-6 ((t (:inherit outline-5 :height 1.2))))
- '(org-level-7 ((t (:inherit outline-5 :height 1.1)))))
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(org-level-1 ((t (:inherit outline-1 :height 1.7))))
+;;  '(org-level-2 ((t (:inherit outline-2 :height 1.6))))
+;;  '(org-level-3 ((t (:inherit outline-3 :height 1.5))))
+;;  '(org-level-4 ((t (:inherit outline-4 :height 1.4))))
+;;  '(org-level-5 ((t (:inherit outline-5 :height 1.3))))
+;;  '(org-level-6 ((t (:inherit outline-5 :height 1.2))))
+;;  '(org-level-7 ((t (:inherit outline-5 :height 1.1)))))
+
+(setq default-directory "G:/Other computers/Lenny/Documents/Story-Weaver")
 
 (add-to-list 'load-path "~/.emacs.d/var/scripts/")
 
@@ -38,40 +40,14 @@
 ;;(setq package-user-dir (expand-file-name "elpaca" minimal-emacs-var-dir))
 (setq user-emacs-directory minimal-emacs-var-dir)
 
+  (global-prettify-symbols-mode t)
+
 (use-package all-the-icons
   :ensure t
   :if (display-graphic-p))
 
 (use-package all-the-icons-dired
   :hook (dired-mode . (lambda () (all-the-icons-dired-mode t))))
-
-(set-face-attribute 'default nil
-  :font "FiraCode Nerd Font"
-  :height 110
-  :weight 'medium)
-(set-face-attribute 'variable-pitch nil
-  :font "Gentium Plus"
-  :height 120
-  :weight 'medium)
-(set-face-attribute 'fixed-pitch nil
-  :font "FiraCode Nerd Font"
-  :height 110
-  :weight 'medium)
-;; Makes commented text and keywords italics.
-;; This is working in emacsclient but not emacs.
-;; Your font must have an italic face available.
-(set-face-attribute 'font-lock-comment-face nil
-  :slant 'italic)
-(set-face-attribute 'font-lock-keyword-face nil
-  :slant 'italic)
-
-;; This sets the default font on all graphical frames created after restarting Emacs.
-;; Does the same thing as 'set-face-attribute default' above, but emacsclient fonts
-;; are not right unless I also add this method of setting the default font.
-(add-to-list 'default-frame-alist '(font . "FiraCode Nerd Font Mono-11"))
-
-;; Uncomment the following line if line spacing needs adjusting.
-(setq-default line-spacing 0.12)
 
 (global-set-key (kbd "C-=") 'text-scale-increase)
 (global-set-key (kbd "C--") 'text-scale-decrease)
