@@ -33,8 +33,10 @@ custom.el
 # --- Common Emacs state files (defaults, in case not redirected) ---
 /saveplace
 /recentf
+/recentf.eld
 /history
 /savehist
+*.eld
 /abbrev_defs
 /bookmarks
 /.emacs.desktop*
