@@ -42,17 +42,63 @@
 
 (add-hook 'after-init-hook #'which-key-mode)
 
-(when (display-graphic-p)
-  (load-theme 'modus-vivendi :no-confirm))
+(use-package fontaine
+  :if (display-graphic-p)
+  :config
+  (setq fontaine-presets
+        '((default
+           :default-family "FiraCode Nerd Font"
+           :default-height 120
+           :fixed-pitch-family "FiraCode Nerd Font"
+           :variable-pitch-family "Gentium Plus"
+           :variable-pitch-height 1.15)))
+  ;; Persist and restore the last-used preset across sessions.
+  (fontaine-mode 1)
+  (fontaine-set-preset (or (fontaine-restore-latest-preset) 'default)))
 
-(when (display-graphic-p)
-  ;; Monospace: FiraCode Nerd Font.
-  (when (find-font (font-spec :name "FiraCode Nerd Font"))
-    (set-face-attribute 'default nil :family "FiraCode Nerd Font" :height 120)
-    (set-face-attribute 'fixed-pitch nil :family "FiraCode Nerd Font"))
-  ;; Variable/prose: Gentium Plus.
-  (when (find-font (font-spec :name "Gentium Plus"))
-    (set-face-attribute 'variable-pitch nil :family "Gentium Plus" :height 130)))
+(use-package nano-theme
+  :config
+  (load-theme 'nano-dark :no-confirm))
+
+(use-package nano-modeline
+  :init
+  (setq nano-modeline-position 'nano-modeline-footer)
+  :hook
+  ((prog-mode . nano-modeline-prog-mode)
+   (text-mode . nano-modeline-text-mode)
+   (org-mode  . nano-modeline-org-mode)))
+
+(use-package spacious-padding
+  :if (display-graphic-p)
+  :config
+  (spacious-padding-mode 1))
+
+;; Prose gets the variable-pitch font; code/tables stay fixed-pitch.
+(use-package mixed-pitch
+  :hook ((org-mode  . mixed-pitch-mode)
+         (text-mode . mixed-pitch-mode)))
+
+;; Modern Org rendering.
+(use-package org-modern
+  :config
+  (with-eval-after-load 'org
+    (global-org-modern-mode)))
+
+;; Reveal emphasis markers only around point.
+(use-package org-appear
+  :hook (org-mode . org-appear-mode))
+
+(with-eval-after-load 'org
+  (setq org-hide-emphasis-markers t
+        org-pretty-entities t))
+
+(use-package diminish
+  :config
+  (with-eval-after-load 'which-key  (diminish 'which-key-mode))
+  (with-eval-after-load 'mixed-pitch (diminish 'mixed-pitch-mode))
+  (with-eval-after-load 'org-appear (diminish 'org-appear-mode))
+  (diminish 'visual-line-mode)
+  (with-eval-after-load 'autorevert (diminish 'auto-revert-mode)))
 
 (provide 'post-init)
 ;;; post-init.el ends here
