@@ -235,7 +235,9 @@ REPLACE the region/buffer in place."
     ("f" "Fill column"    display-fill-column-indicator-mode)]
    ["Look"
     ("m" "Mixed pitch"    mixed-pitch-mode)
-    ("T" "Dark/light"     e6/toggle-theme)]])
+    ("T" "Dark/light"     e6/toggle-theme)]
+   ["Workflow"
+    ("R" "Read-aloud/dictate" e6/readback-mode)]])
 
 (transient-define-prefix e6/help-menu ()
   "Help."
@@ -611,6 +613,214 @@ REPLACE the region/buffer in place."
              ("Elfeed"        elfeed              "e")
              ("Edit config"   (find-file (expand-file-name "Config.org" e6/config-directory)) "C"))))))
   (setopt initial-buffer-choice #'enlight))
+
+(defgroup e6-readback nil "Read-aloud + dictation workflow." :group 'e6)
+
+(defcustom e6/readback-piper-executable "piper"
+  "Piper TTS executable." :type 'string :group 'e6-readback)
+(defcustom e6/readback-piper-voice-en
+  (expand-file-name "~/.local/share/piper/en_US-lessac-medium.onnx")
+  "Piper English voice model (.onnx)." :type 'string :group 'e6-readback)
+(defcustom e6/readback-piper-voice-es
+  (expand-file-name "~/.local/share/piper/es_ES-davefx-medium.onnx")
+  "Piper Spanish voice model (.onnx)." :type 'string :group 'e6-readback)
+(defcustom e6/readback-mpv-executable "mpv"
+  "Media player used for playback (needs IPC for pause/resume)."
+  :type 'string :group 'e6-readback)
+(defcustom e6/readback-mpv-socket "/tmp/e6-readback-mpv.sock"
+  "Unix socket for mpv IPC." :type 'string :group 'e6-readback)
+(defcustom e6/readback-python "python3"
+  "Python used to run the Parakeet server." :type 'string :group 'e6-readback)
+(defcustom e6/readback-stt-port 8123
+  "Localhost port for the Parakeet server." :type 'integer :group 'e6-readback)
+(defcustom e6/readback-record-command
+  '("arecord" "-q" "-f" "S16_LE" "-r" "16000" "-c" "1")
+  "Command (list) to record the mic; the output WAV path is appended."
+  :type '(repeat string) :group 'e6-readback)
+(defcustom e6/readback-comment-prefix "# "
+  "Prefix for inserted Org comment lines." :type 'string :group 'e6-readback)
+
+(defvar e6/readback-language 'en "Current TTS language (en or es).")
+(defvar e6/readback--stt-proc nil)
+(defvar e6/readback--play-proc nil)
+(defvar e6/readback--rec-proc nil)
+(defvar e6/readback--recording nil)
+(defvar e6/readback--rec-file nil)
+(defvar e6/readback--anchor nil
+  "Marker at the end of the paragraph being reviewed (comment anchor).")
+
+(defun e6/readback--para-bounds ()
+  "Return (BEG . END) of the current paragraph's prose, excluding # comments."
+  (save-excursion
+    (let (beg end)
+      (backward-paragraph)
+      (skip-chars-forward "\n")
+      (setq beg (point))
+      (while (and (not (eobp))
+                  (not (looking-at-p "[ \t]*$"))
+                  (not (looking-at-p "[ \t]*#\\( \\|$\\)")))
+        (forward-line 1))
+      (setq end (point))
+      (cons beg end))))
+
+(defun e6/readback--comment-insert-point ()
+  "Point after the reviewed paragraph's existing comments, so notes stack."
+  (save-excursion
+    (goto-char (or (and (markerp e6/readback--anchor)
+                        (marker-position e6/readback--anchor))
+                   (cdr (e6/readback--para-bounds))))
+    (while (and (not (eobp)) (looking-at-p "[ \t]*#\\( \\|$\\)"))
+      (forward-line 1))
+    (point)))
+
+(defun e6/readback--insert-comment (text)
+  "Insert TEXT as Org comment line(s), stacked after any existing ones."
+  (let ((pt (e6/readback--comment-insert-point)))
+    (save-excursion
+      (goto-char pt)
+      (unless (bolp) (insert "\n"))
+      (dolist (line (split-string (string-trim text) "\n"))
+        (insert e6/readback-comment-prefix line "\n")))))
+
+(defun e6/readback--voice ()
+  (if (eq e6/readback-language 'es)
+      e6/readback-piper-voice-es
+    e6/readback-piper-voice-en))
+
+(defun e6/readback--synth (text wav)
+  "Synthesize TEXT to WAV with Piper."
+  (with-temp-buffer
+    (insert text)
+    (call-process-region (point-min) (point-max)
+                         e6/readback-piper-executable nil nil nil
+                         "--model" (e6/readback--voice)
+                         "--output_file" wav)))
+
+(defun e6/readback--mpv-cmd (json)
+  (ignore-errors
+    (let ((p (make-network-process
+              :name "e6-mpv-ipc" :family 'local
+              :service e6/readback-mpv-socket :coding 'utf-8)))
+      (process-send-string p (concat json "\n"))
+      (delete-process p))))
+
+(defun e6/readback--pause (yes)
+  (e6/readback--mpv-cmd
+   (format "{\"command\":[\"set_property\",\"pause\",%s]}" (if yes "true" "false"))))
+
+(defun e6/readback--play-file (wav)
+  (e6/readback-stop)
+  (setq e6/readback--play-proc
+        (start-process "e6-mpv" nil e6/readback-mpv-executable
+                       (format "--input-ipc-server=%s" e6/readback-mpv-socket)
+                       "--no-terminal" "--no-video" "--idle=no" wav)))
+
+(defun e6/readback-play ()
+  "Read the region, or the current paragraph's prose, aloud."
+  (interactive)
+  (let* ((region (use-region-p))
+         (bounds (unless region (e6/readback--para-bounds)))
+         (text (string-trim
+                (if region
+                    (buffer-substring-no-properties (region-beginning) (region-end))
+                  (buffer-substring-no-properties (car bounds) (cdr bounds)))))
+         (wav (make-temp-file "e6-tts" nil ".wav")))
+    (setq e6/readback--anchor
+          (copy-marker (if region
+                           (save-excursion (goto-char (region-end))
+                                           (line-beginning-position 2))
+                         (cdr bounds))))
+    (if (string-empty-p text)
+        (message "Nothing to read here.")
+      (e6/readback--synth text wav)
+      (e6/readback--play-file wav)
+      (message "Reading (%s)…  <f8> comment  <f9> stop" e6/readback-language))))
+
+(defun e6/readback-stop ()
+  "Stop playback."
+  (interactive)
+  (when (process-live-p e6/readback--play-proc)
+    (delete-process e6/readback--play-proc)))
+
+(defun e6/readback-toggle-language ()
+  "Toggle TTS language between English and Spanish."
+  (interactive)
+  (setq e6/readback-language (if (eq e6/readback-language 'en) 'es 'en))
+  (message "readback language: %s" e6/readback-language))
+
+(defun e6/readback--start-server ()
+  (unless (process-live-p e6/readback--stt-proc)
+    (let ((process-environment
+           (cons (format "E6_STT_PORT=%d" e6/readback-stt-port) process-environment))
+          (script (expand-file-name "scripts/parakeet_server.py" e6/config-directory)))
+      (setq e6/readback--stt-proc
+            (start-process "e6-stt" "*e6-stt*" e6/readback-python script))
+      (message "readback: loading Parakeet model in *e6-stt* (first use may wait)…"))))
+
+(defun e6/readback--transcribe (wav)
+  (with-output-to-string
+    (with-current-buffer standard-output
+      (call-process "curl" nil t nil "-s" "-X" "POST"
+                    "--data-binary" wav
+                    (format "http://127.0.0.1:%d/transcribe" e6/readback-stt-port)))))
+
+(defun e6/readback-dictate-toggle ()
+  "Pause reading and record a spoken comment; call again to stop + insert."
+  (interactive)
+  (if e6/readback--recording
+      (e6/readback--finish-dictation)
+    (e6/readback--begin-dictation)))
+
+(defun e6/readback--begin-dictation ()
+  (e6/readback--pause t)
+  (setq e6/readback--rec-file (make-temp-file "e6-dictate" nil ".wav")
+        e6/readback--rec-proc (apply #'start-process "e6-rec" nil
+                                     (append e6/readback-record-command
+                                             (list e6/readback--rec-file)))
+        e6/readback--recording t)
+  (message "Recording comment… press the dictate key again to stop"))
+
+(defun e6/readback--finish-dictation ()
+  (setq e6/readback--recording nil)
+  (when (process-live-p e6/readback--rec-proc)
+    (interrupt-process e6/readback--rec-proc)  ; SIGINT so arecord finalizes WAV
+    (sleep-for 0.4))
+  (let ((text (string-trim (e6/readback--transcribe e6/readback--rec-file))))
+    (if (string-empty-p text)
+        (message "No transcript (is the model loaded? see *e6-stt*).")
+      (e6/readback--insert-comment text)
+      (message "Comment added: %s" text)))
+  (ignore-errors (delete-file e6/readback--rec-file)))
+
+(defvar e6/readback-mode-map
+  (let ((m (make-sparse-keymap)))
+    (define-key m (kbd "<f6>") #'e6/readback-toggle-language)
+    (define-key m (kbd "<f7>") #'e6/readback-play)
+    (define-key m (kbd "<f8>") #'e6/readback-dictate-toggle)
+    (define-key m (kbd "<f9>") #'e6/readback-stop)
+    m)
+  "Keymap for `e6/readback-mode'.")
+
+(define-minor-mode e6/readback-mode
+  "Read paragraphs aloud (Piper) and dictate Org-comment notes (Parakeet)."
+  :lighter " 🎙"
+  :keymap e6/readback-mode-map
+  (if e6/readback-mode
+      (if (not e6/linux-p)
+          (progn (setq e6/readback-mode nil)
+                 (user-error "e6/readback-mode is Linux-only"))
+        (e6/readback--start-server))
+    ;; teardown: kill server, playback, recording; free the model memory.
+    (e6/readback-stop)
+    (when (process-live-p e6/readback--rec-proc) (interrupt-process e6/readback--rec-proc))
+    (when (process-live-p e6/readback--stt-proc) (delete-process e6/readback--stt-proc))
+    (setq e6/readback--recording nil)))
+
+(defun e6/readback-restart-server ()
+  "Restart the Parakeet server."
+  (interactive)
+  (when (process-live-p e6/readback--stt-proc) (delete-process e6/readback--stt-proc))
+  (e6/readback--start-server))
 
 (provide 'post-init)
 ;;; post-init.el ends here
