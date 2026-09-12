@@ -49,7 +49,11 @@ custom.el
 /.org-id-locations
 /projectile*
 /persp-*
+/org-persist/
 /.org-persist/
+/eshell/
+/tramp*
+/url/
 
 # --- Editor / OS cruft ---
 *~
