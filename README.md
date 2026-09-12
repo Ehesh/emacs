@@ -47,10 +47,51 @@ This is a single config synced across machines via git.
 ## Editor extras
 
 - **dirvish** — modern file manager (replaces Dired); `SPC f d`, sidebar `SPC f D`.
-- **olivetti** — centered writing margins in text/Org buffers; toggle `SPC t o`.
+- **olivetti** — centered writing margins in text/Org/Markdown buffers (code
+  buffers keep full width); `olivetti-style` is `fancy`, and the `fringe` face is
+  darkened so the page flanks read as margins. Toggle `SPC t o`.
 - **org-sticky-header** — pins the current heading at the top of Org buffers.
-- **Nord-coloured Org headings** — heading levels are sized and coloured with the
-  Nord palette to match `nano-dark`.
+- **Nord-coloured Org headings** — heading levels sized/coloured with the Nord
+  palette; source blocks get a subtle raised background and code faces stay
+  monospaced even under mixed-pitch (zzamboni-style beautify).
+- **rainbow-delimiters** — nested brackets/parens coloured by depth in code.
+
+## Languages & linting
+
+Opening a supported file gives you syntax highlighting, and **linting/diagnostics
+via `eglot` (built-in LSP) — but only if the matching language server is on your
+`PATH`** (silent otherwise). Major modes: Markdown, YAML, TOML, Lua, Typst
+(`.typ`, needs the typst tree-sitter grammar), Rust (`rust-ts-mode`), Python
+(built-in), plus Quarto `.qmd` from the research pass.
+
+Install servers as you need them (Linux; use uv for Python tools):
+
+| Language | Server | Install |
+|---|---|---|
+| Python | basedpyright / ruff | `uv tool install basedpyright` · `uv tool install ruff` |
+| Rust | rust-analyzer | `rustup component add rust-analyzer` |
+| Typst | tinymist | download from the tinymist releases (or your package manager) |
+| Lua | lua-language-server | your package manager |
+| YAML | yaml-language-server | `npm i -g yaml-language-server` |
+| TOML | taplo | `cargo install taplo-cli --locked` |
+| Markdown | marksman | your package manager / release |
+
+For Typst syntax you also need the tree-sitter grammar:
+`M-x treesit-install-language-grammar RET typst`.
+
+## Launch & services
+
+`SPC l` opens a menu to **convert the current file** (Org/Markdown/QMD → Word,
+HTML, or PDF via Quarto; `.typ` → PDF via `typst`) and to open **prodigy**, which
+runs and **tracks long-running services** so you never forget one:
+
+- `SPC l s` → prodigy: `s` start, `S` stop, `r` restart, `b` open its URL. Ships
+  with **marimo** (`uvx marimo edit`) and **BentoPDF** (`podman run …`, no `-d` so
+  prodigy owns it and stopping the service stops the container).
+- `SPC l P` → `list-processes` (all Emacs child processes).
+
+Anything you launch this way is an Emacs child process, so it also dies when you
+quit Emacs — no orphaned resource hogs.
 
 ## Read-aloud & dictation (Linux only)
 

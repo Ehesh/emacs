@@ -336,11 +336,14 @@ width with =C-c { / }= (=olivetti-shrink/expand=). This is complementary to
 
 #+begin_src emacs-lisp
 (use-package olivetti
+  ;; Text-type buffers only (Org, Markdown/QMD derive from text-mode); code
+  ;; buffers keep their normal full-width indentation.
   :hook ((text-mode . olivetti-mode)
          (org-mode  . olivetti-mode))
   :custom
   (olivetti-body-width 90)
   (olivetti-minimum-body-width 60)
+  (olivetti-style 'fancy)   ; fringes + margins → the darker flanks (see fringe face)
   :config
   (with-eval-after-load 'diminish (diminish 'olivetti-mode)))
 #+end_src
@@ -373,7 +376,7 @@ theme changes so it survives a dark/light toggle.
 
 #+begin_src emacs-lisp
 (defun e6/apply-nord-org-headings (&rest _)
-  "Colour and size Org heading faces by level, Nord-style."
+  "Colour/size Org headings (Nord); keep code faces monospaced; darken fringe."
   (let ((specs '((org-document-title "#88C0D0" 1.5)
                  (org-level-1        "#88C0D0" 1.30)   ; frost cyan
                  (org-level-2        "#81A1C1" 1.20)   ; frost blue
@@ -388,7 +391,19 @@ theme changes so it survives a dark/light toggle.
         (set-face-attribute (nth 0 s) nil
                             :foreground (nth 1 s)
                             :height (nth 2 s)
-                            :weight 'bold)))))
+                            :weight 'bold))))
+  ;; Keep code-ish elements monospaced even with mixed-pitch, and give source
+  ;; blocks a subtle raised background (Nord polar night). (zzamboni-style.)
+  (when (facep 'org-block)
+    (set-face-attribute 'org-block nil :inherit 'fixed-pitch :background "#333B4A"))
+  (dolist (f '(org-code org-verbatim))
+    (when (facep f) (set-face-attribute f nil :inherit '(shadow fixed-pitch))))
+  (dolist (f '(org-table org-formula org-block-begin-line org-block-end-line
+               org-document-info-keyword org-meta-line))
+    (when (facep f) (set-face-attribute f nil :inherit 'fixed-pitch)))
+  ;; Darker fringe so Olivetti's flanks read as page margins around the text.
+  (when (facep 'fringe)
+    (set-face-attribute 'fringe nil :background "#242933")))
 
 (with-eval-after-load 'org (e6/apply-nord-org-headings))
 (add-hook 'enable-theme-functions #'e6/apply-nord-org-headings)
@@ -639,6 +654,7 @@ the menus are defined so meow can resolve the symbols.
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("l"   . e6/launch-menu)
    '("m"   . himalaya)
    '("n"   . e6/notes-menu)
    '("r"   . e6/research-menu)
@@ -1271,6 +1287,174 @@ so this stays safe on any machine.
 Tip: for a project's own dependencies, run Emacs (or the block) from a directory
 with a =uv= project/venv and =uv run= will use it automatically. To use a package
 ad hoc, remember =uv run --with PKG python=.
+
+* Languages, linting & tools
+:PROPERTIES:
+:CUSTOM_ID: languages
+:END:
+
+*Pass 10* — so that when you open a file of some type you get syntax + linting:
+major modes for common formats, on-the-fly diagnostics via *eglot* (built-in
+LSP) *only when a language server is installed* (silent otherwise),
+rainbow-delimiters, and a launch/convert menu with *prodigy* to run and *track*
+long-running services (so nothing you start is forgotten).
+
+** File-type major modes
+:PROPERTIES:
+:CUSTOM_ID: filetypes
+:END:
+
+#+begin_src emacs-lisp
+(use-package markdown-mode :mode ("\\.md\\'" "\\.markdown\\'"))
+(use-package yaml-mode     :mode ("\\.ya?ml\\'"))
+(use-package toml-mode     :mode ("\\.toml\\'"))
+(use-package lua-mode      :mode ("\\.lua\\'"))
+(use-package typst-ts-mode :mode ("\\.typ\\'"))   ; needs the typst tree-sitter grammar
+(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-ts-mode))  ; rust-ts is built in
+;; .qmd is handled by quarto-mode (see Research pass); Python is built in.
+#+end_src
+
+** Rainbow delimiters
+:PROPERTIES:
+:CUSTOM_ID: rainbow-delimiters
+:END:
+
+Nested brackets/parentheses are coloured by depth, so a pair shares a colour —
+on top of =show-paren= (already on), which flashes the exact match at point.
+
+#+begin_src emacs-lisp
+(use-package rainbow-delimiters
+  :hook (prog-mode . rainbow-delimiters-mode))
+#+end_src
+
+** Linting via eglot (LSP)
+:PROPERTIES:
+:CUSTOM_ID: eglot
+:END:
+
+eglot is built in. We start it automatically *only if* a language server for the
+buffer's mode is on =PATH= — so you get linting/diagnostics for free where the
+tool exists, and zero noise where it doesn't. Install servers per language (see
+the README): e.g. =basedpyright= / =ruff= (Python), =rust-analyzer= (Rust),
+=tinymist= (Typst), =lua-language-server=, =yaml-language-server=, =taplo= (TOML),
+=marksman= (Markdown).
+
+#+begin_src emacs-lisp
+(defvar e6/eglot-servers
+  '((python-mode    . ("basedpyright-langserver" "pyright-langserver" "pylsp"))
+    (python-ts-mode . ("basedpyright-langserver" "pyright-langserver" "pylsp"))
+    (rust-ts-mode   . ("rust-analyzer"))
+    (lua-mode       . ("lua-language-server"))
+    (typst-ts-mode  . ("tinymist"))
+    (yaml-mode      . ("yaml-language-server"))
+    (toml-mode      . ("taplo"))
+    (conf-toml-mode . ("taplo"))
+    (markdown-mode  . ("marksman")))
+  "Major mode -> candidate LSP server executables.")
+
+(defun e6/maybe-eglot ()
+  "Start eglot only when a language server for this buffer is installed."
+  (when (and buffer-file-name
+             (seq-some #'executable-find
+                       (cdr (assq major-mode e6/eglot-servers))))
+    (eglot-ensure)))
+
+(dolist (m '(python-mode python-ts-mode rust-ts-mode lua-mode typst-ts-mode
+             yaml-mode toml-mode conf-toml-mode markdown-mode))
+  (add-hook (intern (format "%s-hook" m)) #'e6/maybe-eglot))
+
+(with-eval-after-load 'eglot
+  (setq eglot-autoshutdown t))
+#+end_src
+
+** Convert current file
+:PROPERTIES:
+:CUSTOM_ID: convert
+:END:
+
+One-shot exports run asynchronously (they appear in =M-x list-processes= while
+running, then finish). Quarto handles Org/Markdown/QMD → Word/HTML/PDF; =typst=
+compiles =.typ= directly.
+
+#+begin_src emacs-lisp
+(defun e6/quarto-render (fmt)
+  "Render the current file to FMT with quarto."
+  (let ((f (buffer-file-name)))
+    (unless f (user-error "Buffer has no file"))
+    (async-shell-command
+     (format "quarto render %s --to %s" (shell-quote-argument f) fmt)
+     (format "*quarto:%s*" fmt))))
+
+(defun e6/export-docx () (interactive) (e6/quarto-render "docx"))
+(defun e6/export-html () (interactive) (e6/quarto-render "html"))
+(defun e6/export-pdf  () (interactive) (e6/quarto-render "typst")) ; PDF via Typst
+
+(defun e6/typst-compile ()
+  "Compile the current .typ file to PDF with typst."
+  (interactive)
+  (let ((f (buffer-file-name)))
+    (unless f (user-error "Buffer has no file"))
+    (async-shell-command
+     (format "typst compile %s" (shell-quote-argument f)) "*typst*")))
+#+end_src
+
+** Services you can start, stop & see — prodigy
+:PROPERTIES:
+:CUSTOM_ID: prodigy
+:END:
+
+[[https://github.com/rejeep/prodigy.el][prodigy]] is the answer to "did I leave something running?": it lists your
+long-running services with their *status*, and you start/stop them from one
+buffer (=M-x prodigy=, or =SPC l s=). Services run as Emacs child processes, so
+they also die with Emacs and show in =M-x list-processes=. Add your own with
+=prodigy-define-service=.
+
+In the prodigy buffer: =s= start, =S= stop, =r= restart, =$= view output,
+=b= open the =:url= in a browser.
+
+#+begin_src emacs-lisp
+(use-package prodigy
+  :commands (prodigy)
+  :config
+  (prodigy-define-service
+    :name "marimo (uvx)"
+    :command "uvx"
+    :args '("marimo" "edit" "--headless")
+    :cwd "~/"
+    :url "http://localhost:2718"
+    :stop-signal 'sigint
+    :kill-process-buffer-on-stop t)
+  (prodigy-define-service
+    :name "BentoPDF (podman)"
+    :command "podman"
+    ;; No -d: prodigy owns the container, so stopping the service stops it
+    ;; and it can't linger forgotten.
+    :args '("run" "--rm" "--name" "bentopdf" "-p" "3000:8080"
+            "ghcr.io/alam00000/bentopdf-simple:latest")
+    :url "http://localhost:3000"
+    :stop-signal 'sigterm
+    :kill-process-buffer-on-stop t))
+#+end_src
+
+** Launch & convert menu
+:PROPERTIES:
+:CUSTOM_ID: launch-menu
+:END:
+
+Wired to =SPC l=.
+
+#+begin_src emacs-lisp
+(transient-define-prefix e6/launch-menu ()
+  "Launch & convert."
+  [["Convert current file"
+    ("w" "→ Word (quarto)"  e6/export-docx)
+    ("h" "→ HTML (quarto)"  e6/export-html)
+    ("p" "→ PDF (quarto/typst)" e6/export-pdf)
+    ("t" "Typst compile → PDF"  e6/typst-compile)]
+   ["Services (start/stop/status)"
+    ("s" "Services (prodigy)"   prodigy)
+    ("P" "Emacs processes"      list-processes)]])
+#+end_src
 
 * Email — himalaya
 :PROPERTIES:

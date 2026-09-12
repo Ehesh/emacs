@@ -41,6 +41,7 @@ In normal state press =SPC=, wait, and which-key shows the options.
 | =SPC \vert= | Pipe region/buffer to an AI CLI                |
 | =SPC b/f/w= | Buffers / Files / Windows menus                |
 | =SPC g=   | Git (Magit)                                      |
+| =SPC l=   | Launch & convert (exports + services)            |
 | =SPC n=   | Notes menu (capture, inbox, agenda, guide, elfeed) |
 | =SPC r=   | Research menu (citations, PDF/noter, IPA, spell) |
 | =SPC m=   | Email (himalaya)                                 |
@@ -189,6 +190,26 @@ under it.
   =Config.org= (=e6/readback-pocket-voice-en/-es=).
 - Requires (Linux): =pocket-tts= (via uv), =mpv=, =arecord=, and the Parakeet
   server deps — see the README's "Read-aloud & dictation" section.
+
+* Tools, conversions & services
+:PROPERTIES:
+:CUSTOM_ID: tools
+:END:
+
+=SPC l= opens the launch/convert menu.
+
+- *Convert the current file:* =w= → Word, =h= → HTML, =p= → PDF (all via Quarto,
+  which works from Org/Markdown/QMD); =t= compiles a =.typ= with Typst.
+- *Services (=SPC l s=, prodigy):* start/stop long-running things and *see what's
+  running* — ships with *marimo* (=uvx marimo edit=) and *BentoPDF* (a podman
+  container). In the list: =s= start, =S= stop, =r= restart, =b= open its URL.
+- *Forgot what you left running?* =SPC l s= shows every service's status, and
+  =SPC l P= (=list-processes=) shows all Emacs child processes. Everything you
+  launch this way is owned by Emacs, so quitting Emacs stops it too.
+
+*Linting:* open a Markdown/YAML/TOML/Lua/Typst/Rust/Python file and you get
+diagnostics automatically *if* the matching language server is installed (see the
+README for which and how). Nested brackets are colour-coded by depth in code.
 
 * The config workflow (important)
 :PROPERTIES:

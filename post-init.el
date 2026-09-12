@@ -123,11 +123,14 @@
          ("f"   . dirvish-file-info-menu)))
 
 (use-package olivetti
+  ;; Text-type buffers only (Org, Markdown/QMD derive from text-mode); code
+  ;; buffers keep their normal full-width indentation.
   :hook ((text-mode . olivetti-mode)
          (org-mode  . olivetti-mode))
   :custom
   (olivetti-body-width 90)
   (olivetti-minimum-body-width 60)
+  (olivetti-style 'fancy)   ; fringes + margins → the darker flanks (see fringe face)
   :config
   (with-eval-after-load 'diminish (diminish 'olivetti-mode)))
 
@@ -138,7 +141,7 @@
   (org-sticky-header-outline-path-separator " / "))
 
 (defun e6/apply-nord-org-headings (&rest _)
-  "Colour and size Org heading faces by level, Nord-style."
+  "Colour/size Org headings (Nord); keep code faces monospaced; darken fringe."
   (let ((specs '((org-document-title "#88C0D0" 1.5)
                  (org-level-1        "#88C0D0" 1.30)   ; frost cyan
                  (org-level-2        "#81A1C1" 1.20)   ; frost blue
@@ -153,7 +156,19 @@
         (set-face-attribute (nth 0 s) nil
                             :foreground (nth 1 s)
                             :height (nth 2 s)
-                            :weight 'bold)))))
+                            :weight 'bold))))
+  ;; Keep code-ish elements monospaced even with mixed-pitch, and give source
+  ;; blocks a subtle raised background (Nord polar night). (zzamboni-style.)
+  (when (facep 'org-block)
+    (set-face-attribute 'org-block nil :inherit 'fixed-pitch :background "#333B4A"))
+  (dolist (f '(org-code org-verbatim))
+    (when (facep f) (set-face-attribute f nil :inherit '(shadow fixed-pitch))))
+  (dolist (f '(org-table org-formula org-block-begin-line org-block-end-line
+               org-document-info-keyword org-meta-line))
+    (when (facep f) (set-face-attribute f nil :inherit 'fixed-pitch)))
+  ;; Darker fringe so Olivetti's flanks read as page margins around the text.
+  (when (facep 'fringe)
+    (set-face-attribute 'fringe nil :background "#242933")))
 
 (with-eval-after-load 'org (e6/apply-nord-org-headings))
 (add-hook 'enable-theme-functions #'e6/apply-nord-org-headings)
@@ -326,6 +341,7 @@ REPLACE the region/buffer in place."
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("l"   . e6/launch-menu)
    '("m"   . himalaya)
    '("n"   . e6/notes-menu)
    '("r"   . e6/research-menu)
@@ -652,6 +668,96 @@ REPLACE the region/buffer in place."
   (with-eval-after-load 'python
     (setq python-shell-interpreter "uv"
           python-shell-interpreter-args "run python -i")))
+
+(use-package markdown-mode :mode ("\\.md\\'" "\\.markdown\\'"))
+(use-package yaml-mode     :mode ("\\.ya?ml\\'"))
+(use-package toml-mode     :mode ("\\.toml\\'"))
+(use-package lua-mode      :mode ("\\.lua\\'"))
+(use-package typst-ts-mode :mode ("\\.typ\\'"))   ; needs the typst tree-sitter grammar
+(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-ts-mode))  ; rust-ts is built in
+;; .qmd is handled by quarto-mode (see Research pass); Python is built in.
+
+(use-package rainbow-delimiters
+  :hook (prog-mode . rainbow-delimiters-mode))
+
+(defvar e6/eglot-servers
+  '((python-mode    . ("basedpyright-langserver" "pyright-langserver" "pylsp"))
+    (python-ts-mode . ("basedpyright-langserver" "pyright-langserver" "pylsp"))
+    (rust-ts-mode   . ("rust-analyzer"))
+    (lua-mode       . ("lua-language-server"))
+    (typst-ts-mode  . ("tinymist"))
+    (yaml-mode      . ("yaml-language-server"))
+    (toml-mode      . ("taplo"))
+    (conf-toml-mode . ("taplo"))
+    (markdown-mode  . ("marksman")))
+  "Major mode -> candidate LSP server executables.")
+
+(defun e6/maybe-eglot ()
+  "Start eglot only when a language server for this buffer is installed."
+  (when (and buffer-file-name
+             (seq-some #'executable-find
+                       (cdr (assq major-mode e6/eglot-servers))))
+    (eglot-ensure)))
+
+(dolist (m '(python-mode python-ts-mode rust-ts-mode lua-mode typst-ts-mode
+             yaml-mode toml-mode conf-toml-mode markdown-mode))
+  (add-hook (intern (format "%s-hook" m)) #'e6/maybe-eglot))
+
+(with-eval-after-load 'eglot
+  (setq eglot-autoshutdown t))
+
+(defun e6/quarto-render (fmt)
+  "Render the current file to FMT with quarto."
+  (let ((f (buffer-file-name)))
+    (unless f (user-error "Buffer has no file"))
+    (async-shell-command
+     (format "quarto render %s --to %s" (shell-quote-argument f) fmt)
+     (format "*quarto:%s*" fmt))))
+
+(defun e6/export-docx () (interactive) (e6/quarto-render "docx"))
+(defun e6/export-html () (interactive) (e6/quarto-render "html"))
+(defun e6/export-pdf  () (interactive) (e6/quarto-render "typst")) ; PDF via Typst
+
+(defun e6/typst-compile ()
+  "Compile the current .typ file to PDF with typst."
+  (interactive)
+  (let ((f (buffer-file-name)))
+    (unless f (user-error "Buffer has no file"))
+    (async-shell-command
+     (format "typst compile %s" (shell-quote-argument f)) "*typst*")))
+
+(use-package prodigy
+  :commands (prodigy)
+  :config
+  (prodigy-define-service
+    :name "marimo (uvx)"
+    :command "uvx"
+    :args '("marimo" "edit" "--headless")
+    :cwd "~/"
+    :url "http://localhost:2718"
+    :stop-signal 'sigint
+    :kill-process-buffer-on-stop t)
+  (prodigy-define-service
+    :name "BentoPDF (podman)"
+    :command "podman"
+    ;; No -d: prodigy owns the container, so stopping the service stops it
+    ;; and it can't linger forgotten.
+    :args '("run" "--rm" "--name" "bentopdf" "-p" "3000:8080"
+            "ghcr.io/alam00000/bentopdf-simple:latest")
+    :url "http://localhost:3000"
+    :stop-signal 'sigterm
+    :kill-process-buffer-on-stop t))
+
+(transient-define-prefix e6/launch-menu ()
+  "Launch & convert."
+  [["Convert current file"
+    ("w" "→ Word (quarto)"  e6/export-docx)
+    ("h" "→ HTML (quarto)"  e6/export-html)
+    ("p" "→ PDF (quarto/typst)" e6/export-pdf)
+    ("t" "Typst compile → PDF"  e6/typst-compile)]
+   ["Services (start/stop/status)"
+    ("s" "Services (prodigy)"   prodigy)
+    ("P" "Emacs processes"      list-processes)]])
 
 (use-package himalaya
   :commands (himalaya)
