@@ -110,7 +110,11 @@
   (setq dirvish-attributes
         '(nerd-icons file-time file-size collapse subtree-state vc-state)
         dirvish-side-attributes '(nerd-icons collapse file-size))
-  (dirvish-peek-mode)
+  ;; Minibuffer file preview. Its module/name varies across dirvish versions
+  ;; (differs between machines), so load and enable it defensively.
+  (when (or (fboundp 'dirvish-peek-mode)
+            (require 'dirvish-peek nil t))
+    (dirvish-peek-mode))
   :bind (:map dirvish-mode-map
          ("a"   . dirvish-quick-access)
          ("TAB" . dirvish-subtree-toggle)
