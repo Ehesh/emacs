@@ -44,49 +44,55 @@ This is a single config synced across machines via git.
   programs (Quarto, himalaya, etc.); those are platform-guarded and documented
   in `Config.org` as they're added.
 
+## Editor extras
+
+- **dirvish** — modern file manager (replaces Dired); `SPC f d`, sidebar `SPC f D`.
+- **olivetti** — centered writing margins in text/Org buffers; toggle `SPC t o`.
+- **org-sticky-header** — pins the current heading at the top of Org buffers.
+- **Nord-coloured Org headings** — heading levels are sized and coloured with the
+  Nord palette to match `nano-dark`.
+
 ## Read-aloud & dictation (Linux only)
 
-`e6/readback-mode` (toggle with `SPC t R`) reads paragraphs aloud (Piper) and
-lets you dictate spoken comments that Parakeet v3 transcribes into Org `# …`
-comment lines. Models load only while the mode is on. In-mode keys: `<f7>` read,
-`<f8>` dictate (press once to pause+record, again to stop+insert), `<f9>` stop,
-`<f6>` switch English/Spanish. Multiple comments on one paragraph stack.
+`e6/readback-mode` (toggle with `SPC t R`) reads paragraphs aloud (**pocket-tts**
+— much better Spanish than Piper) and lets you dictate spoken comments that
+**Parakeet v3** transcribes into Org `# …` comment lines (which don't export to
+Word). Enabling starts two warm model servers; disabling frees them.
 
-**Setup with uv (preferred):**
+**In-mode keys:** `<f7>` read paragraph/region · `<f8>` dictate (once =
+pause+record, again = stop+insert) · `<f9>` stop · `<f6>` language en/es ·
+`<f10>`/`<f12>` slower/faster · `M-<f12>` reset speed. Comments stack under the
+paragraph.
 
-```bash
-# TTS + player + recorder (system packages)
-sudo apt install mpv alsa-utils curl        # arecord is in alsa-utils
-
-# Piper TTS as a uv tool
-uv tool install piper-tts                    # provides the `piper` binary
-
-# Piper voices -> ~/.local/share/piper/  (download .onnx + .onnx.json)
-mkdir -p ~/.local/share/piper
-# e.g. en_US-lessac-medium and es_ES-davefx-medium from the Piper voices repo
-
-```
-
-**STT server:** if `uv` is on PATH, `e6/readback-server-command` already
-defaults to `("uv" "run" "--with" "nemo_toolkit[asr]" "python")` — so the
-Parakeet server just works, no venv needed (the first launch downloads torch;
-uv caches it afterward). Set your Piper voice paths if they differ
-(`e6/readback-piper-voice-en` / `-es`).
-
-Prefer a persistent, pinned env (faster cold start)? Create one and point the
-launcher at it:
+**Setup with uv:**
 
 ```bash
+# player + recorder (system packages)
+sudo apt install mpv alsa-utils curl          # arecord is in alsa-utils
+
+# TTS: pocket-tts (Kyutai) — the default engine, run as a warm server
+uv tool install pocket-tts                     # or just rely on `uvx pocket-tts`
+
+# STT: Parakeet server deps into a uv env (heavy: pulls torch)
 uv venv ~/.venvs/parakeet
 uv pip install --python ~/.venvs/parakeet -r scripts/requirements.txt
 ```
-```elisp
-(setq e6/readback-server-command '("/home/YOU/.venvs/parakeet/bin/python"))
-```
 
-**Alternative with pipx / pip:** `pipx install piper-tts`, and
-`pip install -U "nemo_toolkit[asr]"` into a Python, then set
-`e6/readback-server-command` to `("python3")`.
+- **TTS** defaults to pocket-tts started via `uvx pocket-tts serve`
+  (`e6/readback-pocket-serve-command`). Spanish uses the `lola` voice with the
+  `spanish_24l` model; English uses `alba`. Change these in the *Settings* block
+  of `Config.org` (`e6/readback-pocket-voice-en` / `-es`,
+  `e6/readback-pocket-language-en` / `-es`).
+- **STT**: if `uv` is on PATH, `e6/readback-server-command` defaults to
+  `("uv" "run" "--with" "nemo_toolkit[asr]" "python")`, so the Parakeet server
+  works with no venv (first run downloads torch, cached after). To use the pinned
+  venv above instead:
+  ```elisp
+  (setq e6/readback-server-command '("/home/YOU/.venvs/parakeet/bin/python"))
+  ```
+- **Prefer Piper** (e.g. for English speed)? `(setq e6/readback-tts-engine 'piper)`,
+  then `uv tool install piper-tts` and put voice `.onnx` files under
+  `~/.local/share/piper/` (`e6/readback-piper-voice-en` / `-es`).
 
 > Python elsewhere in this config (Org-Babel `python` blocks, the inferior
 > Python shell) is also routed through `uv run python` when uv is on PATH — see

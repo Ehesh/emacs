@@ -100,6 +100,60 @@
   (diminish 'visual-line-mode)
   (with-eval-after-load 'autorevert (diminish 'auto-revert-mode)))
 
+(use-package dirvish
+  :init
+  (dirvish-override-dired-mode)
+  :custom
+  (dirvish-quick-access-entries
+   '(("h" "~/" "Home") ("o" "~/org/" "Org") ("d" "~/Downloads/" "Downloads")))
+  :config
+  (setq dirvish-attributes
+        '(nerd-icons file-time file-size collapse subtree-state vc-state)
+        dirvish-side-attributes '(nerd-icons collapse file-size))
+  (dirvish-peek-mode)
+  :bind (:map dirvish-mode-map
+         ("a"   . dirvish-quick-access)
+         ("TAB" . dirvish-subtree-toggle)
+         ("h"   . dirvish-history-jump)
+         ("s"   . dirvish-quicksort)
+         ("f"   . dirvish-file-info-menu)))
+
+(use-package olivetti
+  :hook ((text-mode . olivetti-mode)
+         (org-mode  . olivetti-mode))
+  :custom
+  (olivetti-body-width 90)
+  (olivetti-minimum-body-width 60)
+  :config
+  (with-eval-after-load 'diminish (diminish 'olivetti-mode)))
+
+(use-package org-sticky-header
+  :hook (org-mode . org-sticky-header-mode)
+  :custom
+  (org-sticky-header-full-path 'full)
+  (org-sticky-header-outline-path-separator " / "))
+
+(defun e6/apply-nord-org-headings (&rest _)
+  "Colour and size Org heading faces by level, Nord-style."
+  (let ((specs '((org-document-title "#88C0D0" 1.5)
+                 (org-level-1        "#88C0D0" 1.30)   ; frost cyan
+                 (org-level-2        "#81A1C1" 1.20)   ; frost blue
+                 (org-level-3        "#8FBCBB" 1.15)   ; frost teal
+                 (org-level-4        "#5E81AC" 1.10)   ; deep blue
+                 (org-level-5        "#B48EAD" 1.05)   ; aurora purple
+                 (org-level-6        "#A3BE8C" 1.05)   ; aurora green
+                 (org-level-7        "#EBCB8B" 1.00)   ; aurora yellow
+                 (org-level-8        "#D08770" 1.00))))  ; aurora orange
+    (dolist (s specs)
+      (when (facep (nth 0 s))
+        (set-face-attribute (nth 0 s) nil
+                            :foreground (nth 1 s)
+                            :height (nth 2 s)
+                            :weight 'bold)))))
+
+(with-eval-after-load 'org (e6/apply-nord-org-headings))
+(add-hook 'enable-theme-functions #'e6/apply-nord-org-headings)
+
 (use-package meow
   :demand t
   :init
@@ -198,12 +252,13 @@ REPLACE the region/buffer in place."
 (transient-define-prefix e6/files-menu ()
   "Files."
   [["Open"
-    ("f" "Find file"   find-file)
-    ("r" "Recent file" recentf-open-files)
-    ("d" "Dired"       dired)]
+    ("f" "Find file"     find-file)
+    ("r" "Recent file"   consult-recent-file)
+    ("d" "Dirvish"       dired)
+    ("D" "Dirvish sidebar" dirvish-side)]
    ["Save"
-    ("s" "Save"        save-buffer)
-    ("S" "Save as"     write-file)]])
+    ("s" "Save"          save-buffer)
+    ("S" "Save as"       write-file)]])
 
 (transient-define-prefix e6/windows-menu ()
   "Windows."
@@ -235,6 +290,7 @@ REPLACE the region/buffer in place."
     ("f" "Fill column"    display-fill-column-indicator-mode)]
    ["Look"
     ("m" "Mixed pitch"    mixed-pitch-mode)
+    ("o" "Olivetti margins" olivetti-mode)
     ("T" "Dark/light"     e6/toggle-theme)]
    ["Workflow"
     ("R" "Read-aloud/dictate" e6/readback-mode)]])
@@ -623,6 +679,34 @@ REPLACE the region/buffer in place."
 
 (defgroup e6-readback nil "Read-aloud + dictation workflow." :group 'e6)
 
+(defcustom e6/readback-tts-engine 'pocket
+  "Text-to-speech engine: `pocket' (Kyutai pocket-tts, better Spanish) or `piper'."
+  :type '(choice (const pocket) (const piper)) :group 'e6-readback)
+
+;; --- pocket-tts (default): run `pocket-tts serve' as a warm HTTP server ---
+(defcustom e6/readback-pocket-serve-command
+  (if (executable-find "uv")
+      '("uvx" "pocket-tts" "serve")
+    '("pocket-tts" "serve"))
+  "Command (list) that starts the pocket-tts HTTP server.
+Host/port/language/voice flags are appended automatically."
+  :type '(repeat string) :group 'e6-readback)
+(defcustom e6/readback-tts-host "127.0.0.1"
+  "Host for the pocket-tts server." :type 'string :group 'e6-readback)
+(defcustom e6/readback-tts-port 8000
+  "Port for the pocket-tts server." :type 'integer :group 'e6-readback)
+(defcustom e6/readback-pocket-language-en ""
+  "pocket-tts --language value for English (empty = default English model)."
+  :type 'string :group 'e6-readback)
+(defcustom e6/readback-pocket-language-es "spanish_24l"
+  "pocket-tts --language value for Spanish (24-layer = higher quality)."
+  :type 'string :group 'e6-readback)
+(defcustom e6/readback-pocket-voice-en "alba"
+  "pocket-tts default voice for English." :type 'string :group 'e6-readback)
+(defcustom e6/readback-pocket-voice-es "lola"
+  "pocket-tts default voice for Spanish." :type 'string :group 'e6-readback)
+
+;; --- piper (fallback engine): per-invocation synthesis ---
 (defcustom e6/readback-piper-executable "piper"
   "Piper TTS executable." :type 'string :group 'e6-readback)
 (defcustom e6/readback-piper-voice-en
@@ -655,8 +739,13 @@ with no manual venv). Other options:
 (defcustom e6/readback-comment-prefix "# "
   "Prefix for inserted Org comment lines." :type 'string :group 'e6-readback)
 
+(defcustom e6/readback-speed 1.0
+  "Playback speed multiplier for read-aloud." :type 'number :group 'e6-readback)
+
 (defvar e6/readback-language 'en "Current TTS language (en or es).")
 (defvar e6/readback--stt-proc nil)
+(defvar e6/readback--tts-proc nil "pocket-tts serve process.")
+(defvar e6/readback--tts-lang nil "Language the running TTS server was started with.")
 (defvar e6/readback--play-proc nil)
 (defvar e6/readback--rec-proc nil)
 (defvar e6/readback--recording nil)
@@ -697,20 +786,70 @@ with no manual venv). Other options:
       (dolist (line (split-string (string-trim text) "\n"))
         (insert e6/readback-comment-prefix line "\n")))))
 
-(defun e6/readback--voice ()
+;; --- pocket-tts warm server -------------------------------------------------
+(defun e6/readback--pocket-lang ()
   (if (eq e6/readback-language 'es)
-      e6/readback-piper-voice-es
-    e6/readback-piper-voice-en))
+      e6/readback-pocket-language-es e6/readback-pocket-language-en))
+(defun e6/readback--pocket-voice ()
+  (if (eq e6/readback-language 'es)
+      e6/readback-pocket-voice-es e6/readback-pocket-voice-en))
 
-(defun e6/readback--synth (text wav)
+(defun e6/readback--start-tts-server (&optional force)
+  "Start (or restart, if FORCE or language changed) the pocket-tts server."
+  (when (eq e6/readback-tts-engine 'pocket)
+    (when (or force
+              (not (process-live-p e6/readback--tts-proc))
+              (not (eq e6/readback--tts-lang e6/readback-language)))
+      (when (process-live-p e6/readback--tts-proc)
+        (delete-process e6/readback--tts-proc))
+      (let* ((lang (e6/readback--pocket-lang))
+             (voice (e6/readback--pocket-voice))
+             (args (append e6/readback-pocket-serve-command
+                           (list "--host" e6/readback-tts-host
+                                 "--port" (number-to-string e6/readback-tts-port))
+                           (unless (string-empty-p lang)  (list "--language" lang))
+                           (unless (string-empty-p voice) (list "--default-voice" voice)))))
+        (setq e6/readback--tts-proc (apply #'start-process "e6-tts" "*e6-tts*" args)
+              e6/readback--tts-lang e6/readback-language)
+        (message "readback: starting pocket-tts (%s) in *e6-tts*…" e6/readback-language)))))
+
+(defun e6/readback--stop-tts-server ()
+  (when (process-live-p e6/readback--tts-proc)
+    (delete-process e6/readback--tts-proc))
+  (setq e6/readback--tts-lang nil))
+
+;; --- synthesis (engine dispatch) --------------------------------------------
+(defun e6/readback--synth-pocket (text wav)
+  "Synthesize TEXT to WAV via the pocket-tts HTTP server (POST /tts)."
+  (e6/readback--start-tts-server)
+  (let ((tf (make-temp-file "e6-tts-in" nil ".txt")))
+    (unwind-protect
+        (progn
+          (with-temp-file tf (insert text))
+          (call-process "curl" nil nil nil "-s" "-X" "POST"
+                        "-F" (format "text=<%s" tf)
+                        "-o" wav
+                        (format "http://%s:%d/tts"
+                                e6/readback-tts-host e6/readback-tts-port)))
+      (ignore-errors (delete-file tf)))))
+
+(defun e6/readback--synth-piper (text wav)
   "Synthesize TEXT to WAV with Piper."
   (with-temp-buffer
     (insert text)
     (call-process-region (point-min) (point-max)
                          e6/readback-piper-executable nil nil nil
-                         "--model" (e6/readback--voice)
+                         "--model" (if (eq e6/readback-language 'es)
+                                       e6/readback-piper-voice-es
+                                     e6/readback-piper-voice-en)
                          "--output_file" wav)))
 
+(defun e6/readback--synth (text wav)
+  (if (eq e6/readback-tts-engine 'piper)
+      (e6/readback--synth-piper text wav)
+    (e6/readback--synth-pocket text wav)))
+
+;; --- playback (mpv) + speed -------------------------------------------------
 (defun e6/readback--mpv-cmd (json)
   (ignore-errors
     (let ((p (make-network-process
@@ -728,8 +867,25 @@ with no manual venv). Other options:
   (setq e6/readback--play-proc
         (start-process "e6-mpv" nil e6/readback-mpv-executable
                        (format "--input-ipc-server=%s" e6/readback-mpv-socket)
+                       (format "--speed=%s" e6/readback-speed)
                        "--no-terminal" "--no-video" "--idle=no" wav)))
 
+(defun e6/readback-set-speed (delta)
+  "Change playback speed by DELTA; also applies to the current playback."
+  (setq e6/readback-speed (max 0.5 (min 3.0 (+ e6/readback-speed delta))))
+  (e6/readback--mpv-cmd
+   (format "{\"command\":[\"set_property\",\"speed\",%s]}" e6/readback-speed))
+  (message "readback speed: %.2fx" e6/readback-speed))
+
+(defun e6/readback-speed-up ()   (interactive) (e6/readback-set-speed 0.1))
+(defun e6/readback-speed-down () (interactive) (e6/readback-set-speed -0.1))
+(defun e6/readback-speed-reset ()
+  (interactive)
+  (setq e6/readback-speed 1.0)
+  (e6/readback--mpv-cmd "{\"command\":[\"set_property\",\"speed\",1.0]}")
+  (message "readback speed: 1.00x"))
+
+;; --- reading ----------------------------------------------------------------
 (defun e6/readback-play ()
   "Read the region, or the current paragraph's prose, aloud."
   (interactive)
@@ -749,7 +905,8 @@ with no manual venv). Other options:
         (message "Nothing to read here.")
       (e6/readback--synth text wav)
       (e6/readback--play-file wav)
-      (message "Reading (%s)…  <f8> comment  <f9> stop" e6/readback-language))))
+      (message "Reading (%s, %.2fx)…  <f8> comment  <f9> stop"
+               e6/readback-language e6/readback-speed))))
 
 (defun e6/readback-stop ()
   "Stop playback."
@@ -758,9 +915,12 @@ with no manual venv). Other options:
     (delete-process e6/readback--play-proc)))
 
 (defun e6/readback-toggle-language ()
-  "Toggle TTS language between English and Spanish."
+  "Toggle TTS language between English and Spanish (restarts pocket-tts)."
   (interactive)
   (setq e6/readback-language (if (eq e6/readback-language 'en) 'es 'en))
+  (when (and (bound-and-true-p e6/readback-mode)
+             (eq e6/readback-tts-engine 'pocket))
+    (e6/readback--start-tts-server t))
   (message "readback language: %s" e6/readback-language))
 
 (defun e6/readback--start-server ()
@@ -810,26 +970,32 @@ with no manual venv). Other options:
 
 (defvar e6/readback-mode-map
   (let ((m (make-sparse-keymap)))
-    (define-key m (kbd "<f6>") #'e6/readback-toggle-language)
-    (define-key m (kbd "<f7>") #'e6/readback-play)
-    (define-key m (kbd "<f8>") #'e6/readback-dictate-toggle)
-    (define-key m (kbd "<f9>") #'e6/readback-stop)
+    (define-key m (kbd "<f6>")   #'e6/readback-toggle-language)
+    (define-key m (kbd "<f7>")   #'e6/readback-play)
+    (define-key m (kbd "<f8>")   #'e6/readback-dictate-toggle)
+    (define-key m (kbd "<f9>")   #'e6/readback-stop)
+    (define-key m (kbd "<f10>")  #'e6/readback-speed-down)
+    (define-key m (kbd "<f12>")  #'e6/readback-speed-up)
+    (define-key m (kbd "M-<f12>") #'e6/readback-speed-reset)
     m)
   "Keymap for `e6/readback-mode'.")
 
 (define-minor-mode e6/readback-mode
-  "Read paragraphs aloud (Piper) and dictate Org-comment notes (Parakeet)."
+  "Read paragraphs aloud (pocket-tts/Piper) and dictate Org-comment notes (Parakeet).
+Enabling starts the model servers; disabling kills them to free memory."
   :lighter " 🎙"
   :keymap e6/readback-mode-map
   (if e6/readback-mode
       (if (not e6/linux-p)
           (progn (setq e6/readback-mode nil)
                  (user-error "e6/readback-mode is Linux-only"))
-        (e6/readback--start-server))
-    ;; teardown: kill server, playback, recording; free the model memory.
+        (e6/readback--start-server)       ; STT (Parakeet)
+        (e6/readback--start-tts-server))  ; TTS (pocket-tts), if that engine
+    ;; teardown: kill both servers, playback, recording; free the model memory.
     (e6/readback-stop)
     (when (process-live-p e6/readback--rec-proc) (interrupt-process e6/readback--rec-proc))
     (when (process-live-p e6/readback--stt-proc) (delete-process e6/readback--stt-proc))
+    (e6/readback--stop-tts-server)
     (setq e6/readback--recording nil)))
 
 (defun e6/readback-restart-server ()

@@ -41,9 +41,11 @@ In normal state press =SPC=, wait, and which-key shows the options.
 | =SPC \vert= | Pipe region/buffer to an AI CLI                |
 | =SPC b/f/w= | Buffers / Files / Windows menus                |
 | =SPC g=   | Git (Magit)                                      |
-| =SPC n=   | Notes & research menu                            |
+| =SPC n=   | Notes menu (capture, inbox, agenda, guide, elfeed) |
+| =SPC r=   | Research menu (citations, PDF/noter, IPA, spell) |
+| =SPC m=   | Email (himalaya)                                 |
 | =SPC s=   | Search menu (line, ripgrep, grep, imenu…)        |
-| =SPC t=   | Toggles (wrap, line numbers, dark/light theme…)  |
+| =SPC t=   | Toggles (wrap, numbers, theme, olivetti, read-aloud) |
 | =SPC h=   | Help (describe function/variable/key/mode)       |
 
 * Org basics
@@ -137,6 +139,54 @@ list in the *elfeed* block of =Config.org=.
 
 Export tooling (Quarto, Typst) is a later pass. For now, =C-c C-e= opens Org's
 export dispatcher for the built-in backends.
+
+* Read-aloud & dictation (Linux)
+:PROPERTIES:
+:CUSTOM_ID: readback
+:END:
+
+A review workflow: Emacs reads a paragraph aloud (pocket-tts), you pause and
+*speak a comment*, it's transcribed (Parakeet v3) and dropped in as an Org
+=#= comment under that paragraph. Those comments don't export to Word, but you
+can review them or feed the file to an LLM. Enable it on an =.org= file with
+=SPC t R= (or =M-x e6/readback-mode=); enabling loads the speech models, and
+disabling frees them.
+
+** Controls (while the mode is on)
+:PROPERTIES:
+:CUSTOM_ID: readback-controls
+:END:
+
+| Key         | Action                                                        |
+|-------------+---------------------------------------------------------------|
+| =<f7>=      | Read the current paragraph (or the region) aloud             |
+| =<f8>=      | Dictate a comment: press once to *pause + record*, press again to *stop + insert* |
+| =<f9>=      | Stop reading                                                  |
+| =<f6>=      | Switch language English ⇄ Spanish (restarts the voice model) |
+| =<f10>=     | Slower                                                        |
+| =<f12>=     | Faster                                                        |
+| =M-<f12>=   | Reset speed to 1.0×                                           |
+
+*Playback speed* changes take effect immediately on the current reading and are
+remembered for the next paragraph (range 0.5×–3.0×, steps of 0.1). The current
+speed is shown when you start reading.
+
+*Comments stack:* a second dictated note on the same paragraph is added *below*
+the first, not on top of it. Reading a paragraph skips any =#= comments already
+under it.
+
+** Tips
+:PROPERTIES:
+:CUSTOM_ID: readback-tips
+:END:
+
+- Keep point in the paragraph you're reviewing; comments anchor to the paragraph
+  that was read.
+- Spanish uses pocket-tts's =lola= voice via the higher-quality =spanish_24l=
+  model; English defaults to =alba=. Change voices in the *Settings* block of
+  =Config.org= (=e6/readback-pocket-voice-en/-es=).
+- Requires (Linux): =pocket-tts= (via uv), =mpv=, =arecord=, and the Parakeet
+  server deps — see the README's "Read-aloud & dictation" section.
 
 * The config workflow (important)
 :PROPERTIES:
