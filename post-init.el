@@ -146,9 +146,11 @@
   :bind ("C-x g" . magit-status)
   :commands (magit-status magit-dispatch magit-file-dispatch magit-log-current magit-blame))
 
-(defcustom e6/ai-cli-command ""
+(defcustom e6/ai-cli-command "pi"
   "Default external CLI for `e6/pipe-to-ai'. It receives text on stdin.
-For example \"llm\" or \"claude -p\". Leave empty to be prompted each time."
+Prefilled as \"pi\" (the coding agent you use); the command is still editable at
+the prompt each time, so you can add flags (e.g. a prompt/argument) as needed.
+Set to \"\" to always start from an empty prompt."
   :type 'string
   :group 'e6)
 
