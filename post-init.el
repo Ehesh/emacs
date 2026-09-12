@@ -263,6 +263,7 @@ REPLACE the region/buffer in place."
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
    '("n"   . e6/notes-menu)
+   '("r"   . e6/research-menu)
    '("s"   . e6/search-menu)
    '("t"   . e6/toggle-menu)
    '("w"   . e6/windows-menu)))
@@ -500,6 +501,82 @@ REPLACE the region/buffer in place."
    ["Media / read"
     ("d" "Paste image" org-download-clipboard)
     ("e" "Elfeed"      elfeed)]])
+
+(defconst e6/bibliography
+  (expand-file-name "references.bib" e6/notes-directory)
+  "Path to the BibTeX file (export from Zotero).")
+
+(use-package citar
+  :custom
+  (citar-bibliography (list e6/bibliography))
+  (citar-notes-paths (list e6/notes-directory))
+  (org-cite-global-bibliography (list e6/bibliography))
+  (org-cite-insert-processor 'citar)
+  (org-cite-follow-processor 'citar)
+  (org-cite-activate-processor 'citar)
+  :bind ("C-c b" . citar-insert-citation))
+
+(use-package citar-embark
+  :after (citar embark)
+  :config
+  (citar-embark-mode))
+
+(use-package pdf-tools
+  :defer t
+  :init
+  (pdf-loader-install)
+  :custom
+  (pdf-view-display-size 'fit-page))
+
+(use-package org-noter
+  :commands (org-noter)
+  :custom
+  (org-noter-notes-search-path (list e6/notes-directory))
+  (org-noter-always-create-frame nil)
+  (org-noter-kill-frame-at-session-end nil))
+
+(use-package jinx
+  :if (and (not e6/windows-p) (executable-find "enchant-2"))
+  :hook ((text-mode . jinx-mode)
+         (org-mode  . jinx-mode))
+  :custom
+  (jinx-languages "en_US es")
+  :bind ("M-$" . jinx-correct))
+
+;; Portable fallback when jinx is unavailable.
+(when (or e6/windows-p (not (executable-find "enchant-2")))
+  (setq ispell-program-name (or (executable-find "hunspell")
+                                (executable-find "aspell")))
+  (when ispell-program-name
+    (add-hook 'text-mode-hook #'flyspell-mode)))
+
+(defun e6/spell-correct ()
+  "Correct the word at point with whatever speller is active."
+  (interactive)
+  (cond ((bound-and-true-p jinx-mode)      (call-interactively #'jinx-correct))
+        ((bound-and-true-p flyspell-mode)  (call-interactively #'flyspell-correct-word-before-point))
+        (t                                  (call-interactively #'ispell-word))))
+
+(setq default-input-method "ipa-praat")
+
+(use-package quarto-mode
+  :mode ("\\.qmd\\'" . poly-quarto-mode))
+
+(use-package ox-typst
+  :after org)
+
+(transient-define-prefix e6/research-menu ()
+  "Research."
+  [["Citations"
+    ("c" "Insert citation" citar-insert-citation)
+    ("o" "Open resource"   citar-open)
+    ("e" "Open entry"      citar-open-entry)]
+   ["PDF / notes"
+    ("p" "Org-noter"       org-noter)
+    ("v" "Open PDF/file"   find-file)]
+   ["Input / spell"
+    ("i" "Toggle IPA"      toggle-input-method)
+    ("s" "Correct word"    e6/spell-correct)]])
 
 (provide 'post-init)
 ;;; post-init.el ends here

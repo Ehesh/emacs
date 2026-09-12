@@ -522,6 +522,7 @@ the menus are defined so meow can resolve the symbols.
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
    '("n"   . e6/notes-menu)
+   '("r"   . e6/research-menu)
    '("s"   . e6/search-menu)
    '("t"   . e6/toggle-menu)
    '("w"   . e6/windows-menu)))
@@ -962,6 +963,167 @@ Wired to =SPC n=.
    ["Media / read"
     ("d" "Paste image" org-download-clipboard)
     ("e" "Elfeed"      elfeed)]])
+#+end_src
+
+* Research tooling
+:PROPERTIES:
+:CUSTOM_ID: research
+:END:
+
+*Pass 5* — citations, PDF reading/annotation, spellcheck, IPA input, and export
+matched to your toolchain (Quarto + Typst, no LaTeX). Some parts need external
+binaries; those are guarded or deferred so Emacs always boots.
+
+** Bibliography — citar
+:PROPERTIES:
+:CUSTOM_ID: citar
+:END:
+
+[[https://github.com/emacs-citar/citar][citar]] is the citation front-end (works with Org-cite). Point it at a =.bib=
+file — export one from Zotero (Better BibTeX) to =references.bib= in your notes
+folder. Insert citations with =C-c b= or =SPC r c=.
+
+#+begin_src emacs-lisp
+(defconst e6/bibliography
+  (expand-file-name "references.bib" e6/notes-directory)
+  "Path to the BibTeX file (export from Zotero).")
+
+(use-package citar
+  :custom
+  (citar-bibliography (list e6/bibliography))
+  (citar-notes-paths (list e6/notes-directory))
+  (org-cite-global-bibliography (list e6/bibliography))
+  (org-cite-insert-processor 'citar)
+  (org-cite-follow-processor 'citar)
+  (org-cite-activate-processor 'citar)
+  :bind ("C-c b" . citar-insert-citation))
+
+(use-package citar-embark
+  :after (citar embark)
+  :config
+  (citar-embark-mode))
+#+end_src
+
+** PDF reading — pdf-tools
+:PROPERTIES:
+:CUSTOM_ID: pdf-tools
+:END:
+
+=pdf-loader-install= only registers loaders (safe at startup); the =epdfinfo=
+server builds on first PDF open. *On Windows* that server needs to be provided
+(e.g. via MSYS2/scoop =poppler=) — until then PDFs won't render, but nothing
+else breaks.
+
+#+begin_src emacs-lisp
+(use-package pdf-tools
+  :defer t
+  :init
+  (pdf-loader-install)
+  :custom
+  (pdf-view-display-size 'fit-page))
+#+end_src
+
+** PDF annotation — org-noter
+:PROPERTIES:
+:CUSTOM_ID: org-noter
+:END:
+
+Side-by-side PDF + Org notes synced to the page. Start with =SPC r p=
+(=org-noter=) from either a PDF or an Org notes buffer.
+
+#+begin_src emacs-lisp
+(use-package org-noter
+  :commands (org-noter)
+  :custom
+  (org-noter-notes-search-path (list e6/notes-directory))
+  (org-noter-always-create-frame nil)
+  (org-noter-kill-frame-at-session-end nil))
+#+end_src
+
+** Spellcheck — jinx (+ portable fallback)
+:PROPERTIES:
+:CUSTOM_ID: spell
+:END:
+
+[[https://github.com/minad/jinx][jinx]] (enchant-based, fast, multi-language) is excellent but needs libenchant +
+a C toolchain — practical on *Linux/macOS*, not Windows. So jinx is OS-guarded;
+on Windows (or without enchant) we fall back to built-in =flyspell= *if* a
+speller (hunspell/aspell) is installed. Either way, =SPC r s= corrects a word.
+
+#+begin_src emacs-lisp
+(use-package jinx
+  :if (and (not e6/windows-p) (executable-find "enchant-2"))
+  :hook ((text-mode . jinx-mode)
+         (org-mode  . jinx-mode))
+  :custom
+  (jinx-languages "en_US es")
+  :bind ("M-$" . jinx-correct))
+
+;; Portable fallback when jinx is unavailable.
+(when (or e6/windows-p (not (executable-find "enchant-2")))
+  (setq ispell-program-name (or (executable-find "hunspell")
+                                (executable-find "aspell")))
+  (when ispell-program-name
+    (add-hook 'text-mode-hook #'flyspell-mode)))
+
+(defun e6/spell-correct ()
+  "Correct the word at point with whatever speller is active."
+  (interactive)
+  (cond ((bound-and-true-p jinx-mode)      (call-interactively #'jinx-correct))
+        ((bound-and-true-p flyspell-mode)  (call-interactively #'flyspell-correct-word-before-point))
+        (t                                  (call-interactively #'ispell-word))))
+#+end_src
+
+** IPA / Unicode input
+:PROPERTIES:
+:CUSTOM_ID: ipa
+:END:
+
+Emacs ships several IPA input methods. We default =C-\= to =ipa-praat= (the
+[[https://github.com/emacs-mirror/emacs/blob/master/lisp/leim/quail/ipa-praat.el][Praat]] convention, familiar from phonetics work): =C-\= toggles it on/off.
+Alternatives are one keystroke away with =C-x RET C-\= (=ipa-x-sampa=,
+=ipa-kirshenbaum=, plain =ipa=). =C-x 8 RET= inserts any Unicode char by name.
+
+#+begin_src emacs-lisp
+(setq default-input-method "ipa-praat")
+#+end_src
+
+** Export — Quarto + Typst
+:PROPERTIES:
+:CUSTOM_ID: export
+:END:
+
+Editing/preview for =.qmd= (Quarto) and an Org→Typst export backend. Both shell
+out to their binaries (=quarto=, =typst=) only when you actually render.
+
+#+begin_src emacs-lisp
+(use-package quarto-mode
+  :mode ("\\.qmd\\'" . poly-quarto-mode))
+
+(use-package ox-typst
+  :after org)
+#+end_src
+
+** Research menu
+:PROPERTIES:
+:CUSTOM_ID: research-menu
+:END:
+
+Wired to =SPC r=.
+
+#+begin_src emacs-lisp
+(transient-define-prefix e6/research-menu ()
+  "Research."
+  [["Citations"
+    ("c" "Insert citation" citar-insert-citation)
+    ("o" "Open resource"   citar-open)
+    ("e" "Open entry"      citar-open-entry)]
+   ["PDF / notes"
+    ("p" "Org-noter"       org-noter)
+    ("v" "Open PDF/file"   find-file)]
+   ["Input / spell"
+    ("i" "Toggle IPA"      toggle-input-method)
+    ("s" "Correct word"    e6/spell-correct)]])
 #+end_src
 
 * File footer
