@@ -1,0 +1,6 @@
+# Normalize line endings to LF across Windows + Linux to avoid CRLF churn.
+# Emacs reads LF files fine on Windows.
+* text=auto eol=lf
+*.el   text eol=lf
+*.org  text eol=lf
+*.md   text eol=lf

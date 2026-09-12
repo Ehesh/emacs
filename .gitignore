@@ -1,0 +1,57 @@
+# ---------------------------------------------------------------------------
+# .gitignore for E6's Emacs config (minimal-emacs.d base, literate Config.org)
+#
+# Tracked:   Config.org (source), init.el + early-init.el (vendored upstream),
+#            the tangled pre-*/post-* .el files, Config.org.bak, this file.
+# Ignored:   installed packages, compilation caches, and all per-machine state.
+# Rule:      only ever edit Config.org; never hand-edit the tangled .el.
+# ---------------------------------------------------------------------------
+
+# --- Installed packages (package.el) ---
+/elpa/
+/elpa-*/
+package-quickstart.el
+package-quickstart.el.gz
+
+# --- Byte / native compilation ---
+*.elc
+/eln-cache/
+
+# --- Auto-generated customizations (per machine, written by Emacs) ---
+custom.el
+
+# --- minimal-emacs.d default state locations ---
+/backup/
+/autosave/
+/auto-save-list/
+/tramp-autosave/
+/themes/           # custom-theme-directory (installed themes land here)
+
+# --- var/ redirection (used once Config.org redirects state here) ---
+/var/
+
+# --- Common Emacs state files (defaults, in case not redirected) ---
+/saveplace
+/recentf
+/history
+/savehist
+/abbrev_defs
+/bookmarks
+/.emacs.desktop*
+/network-security.data
+/transient/
+/request/
+/url/
+/.cache/
+/eshell/
+/.org-id-locations
+/projectile*
+/persp-*
+/.org-persist/
+
+# --- Editor / OS cruft ---
+*~
+\#*\#
+.\#*
+.DS_Store
+Thumbs.db
