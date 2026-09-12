@@ -181,7 +181,7 @@ REPLACE the region/buffer in place."
 (transient-define-prefix e6/buffers-menu ()
   "Buffers."
   [["Switch"
-    ("b" "Switch buffer" switch-to-buffer)
+    ("b" "Switch buffer" consult-buffer)
     ("n" "Next"          next-buffer :transient t)
     ("p" "Previous"      previous-buffer :transient t)]
    ["Manage"
@@ -191,7 +191,7 @@ REPLACE the region/buffer in place."
     ("R" "Rename"  rename-buffer)]
    ["List"
     ("l" "Ibuffer" ibuffer)
-    ("i" "Imenu"   imenu)]])
+    ("i" "Imenu"   consult-imenu)]])
 
 (transient-define-prefix e6/files-menu ()
   "Files."
@@ -251,7 +251,8 @@ REPLACE the region/buffer in place."
    ;; Quick access
    '("SPC" . execute-extended-command)
    '("."   . find-file)
-   '(","   . switch-to-buffer)
+   '(","   . consult-buffer)
+   '("/"   . consult-line)
    '("TAB" . comment-line)
    '("u"   . universal-argument)
    '("|"   . e6/pipe-to-ai)
@@ -260,8 +261,124 @@ REPLACE the region/buffer in place."
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("s"   . e6/search-menu)
    '("t"   . e6/toggle-menu)
    '("w"   . e6/windows-menu)))
+
+(use-package vertico
+  :bind (:map vertico-map
+         ("C-j" . vertico-next)
+         ("C-k" . vertico-previous)
+         ("C-f" . vertico-exit)
+         :map minibuffer-local-map
+         ("M-h" . backward-kill-word))
+  :custom
+  (vertico-cycle t)
+  :init
+  (vertico-mode)
+  (vertico-mouse-mode))
+
+(use-package orderless
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles partial-completion)))))
+
+(use-package marginalia
+  :after vertico
+  :init
+  (marginalia-mode))
+
+(use-package nerd-icons-completion
+  :if (find-font (font-spec :name "Symbols Nerd Font Mono"))
+  :after (marginalia nerd-icons)
+  :hook (marginalia-mode . nerd-icons-completion-marginalia-setup)
+  :init
+  (nerd-icons-completion-mode))
+
+(use-package consult
+  :after vertico
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+  :bind (("C-x b"   . consult-buffer)
+         ("C-x 4 b" . consult-buffer-other-window)
+         ("C-x r b" . consult-bookmark)
+         ("M-y"     . consult-yank-pop)
+         ("M-g g"   . consult-goto-line)
+         ("M-g o"   . consult-outline)
+         ("M-g i"   . consult-imenu)
+         ("M-s l"   . consult-line)
+         ("M-s r"   . consult-ripgrep)
+         ("M-s g"   . consult-grep)
+         ("M-s f"   . consult-find)
+         :map minibuffer-local-map
+         ("M-r"     . consult-history))
+  :init
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+  :config
+  (consult-customize
+   consult-ripgrep consult-grep consult-git-grep
+   consult-bookmark consult-recent-file consult-xref
+   :preview-key '(:debounce 0.4 any))
+  (setq consult-narrow-key "<"))
+
+(use-package embark
+  :bind (("C-."   . embark-act)
+         ("C-;"   . embark-dwim)
+         ("C-h B" . embark-bindings))
+  :init
+  (setq prefix-help-command #'embark-prefix-help-command))
+
+(use-package embark-consult
+  :after (embark consult)
+  :hook (embark-collect-mode . consult-preview-at-point-mode))
+
+(use-package corfu
+  :hook ((prog-mode . corfu-mode)
+         (shell-mode . corfu-mode))
+  :bind (:map corfu-map
+         ("C-n"     . corfu-next)
+         ("C-p"     . corfu-previous)
+         ("<escape>" . corfu-quit)
+         ("<return>" . corfu-insert))
+  :custom
+  (corfu-auto nil)              ; manual only — keeps prose writing clean
+  (corfu-cycle t)
+  (corfu-count 12)
+  (corfu-preselect 'prompt)
+  (tab-always-indent 'complete)
+  :init
+  (global-corfu-mode))
+
+(use-package kind-icon
+  :after corfu
+  :custom
+  (kind-icon-default-face 'corfu-default)
+  (kind-icon-blend-background nil)
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter)
+  ;; Keep icon colours in sync when the theme changes (theme-agnostic).
+  (add-hook 'enable-theme-functions
+            (lambda (&rest _) (when (fboundp 'kind-icon-reset-cache)
+                                (kind-icon-reset-cache)))))
+
+(use-package cape
+  :bind ("C-c p" . cape-prefix-map)
+  :init
+  (add-hook 'completion-at-point-functions #'cape-dabbrev)
+  (add-hook 'completion-at-point-functions #'cape-file)
+  (add-hook 'completion-at-point-functions #'cape-elisp-block))
+
+(transient-define-prefix e6/search-menu ()
+  "Search."
+  [["In buffer"
+    ("s" "Line"    consult-line)
+    ("i" "Imenu"   consult-imenu)
+    ("o" "Outline" consult-outline)]
+   ["In tree"
+    ("g" "Ripgrep" consult-ripgrep)
+    ("G" "Grep"    consult-grep)
+    ("f" "Find"    consult-find)]])
 
 (provide 'post-init)
 ;;; post-init.el ends here

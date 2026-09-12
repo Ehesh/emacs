@@ -37,6 +37,9 @@ This is a single config synced across machines via git.
   erroring — if the font doesn't change, it isn't installed. Install them from
   the [Nerd Fonts](https://www.nerdfonts.com/) project and
   [SIL Gentium](https://software.sil.org/gentium/), then restart Emacs.
+  Completion-list icons additionally need **Symbols Nerd Font Mono** (run
+  `M-x nerd-icons-install-fonts`, then install the downloaded `.ttf`); until
+  then those icons stay off (guarded), and everything else works normally.
 - **External tools (later passes):** some features shell out to external
   programs (Quarto, himalaya, etc.); those are platform-guarded and documented
   in `Config.org` as they're added.
