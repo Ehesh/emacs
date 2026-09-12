@@ -262,6 +262,7 @@ REPLACE the region/buffer in place."
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("m"   . himalaya)
    '("n"   . e6/notes-menu)
    '("r"   . e6/research-menu)
    '("s"   . e6/search-menu)
@@ -528,6 +529,9 @@ REPLACE the region/buffer in place."
   :custom
   (pdf-view-display-size 'fit-page))
 
+(use-package djvu
+  :defer t)
+
 (use-package org-noter
   :commands (org-noter)
   :custom
@@ -577,6 +581,12 @@ REPLACE the region/buffer in place."
    ["Input / spell"
     ("i" "Toggle IPA"      toggle-input-method)
     ("s" "Correct word"    e6/spell-correct)]])
+
+(use-package himalaya
+  :commands (himalaya)
+  :custom
+  ;; Assumes `himalaya' is on PATH; set an absolute path here if not.
+  (himalaya-executable "himalaya"))
 
 (provide 'post-init)
 ;;; post-init.el ends here

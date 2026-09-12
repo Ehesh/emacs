@@ -521,6 +521,7 @@ the menus are defined so meow can resolve the symbols.
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("m"   . himalaya)
    '("n"   . e6/notes-menu)
    '("r"   . e6/research-menu)
    '("s"   . e6/search-menu)
@@ -1029,9 +1030,13 @@ else breaks.
 :END:
 
 Side-by-side PDF + Org notes synced to the page. Start with =SPC r p=
-(=org-noter=) from either a PDF or an Org notes buffer.
+(=org-noter=) from either a PDF or an Org notes buffer. =djvu= is installed so
+org-noter can also annotate DjVu documents (and stops warning about it).
 
 #+begin_src emacs-lisp
+(use-package djvu
+  :defer t)
+
 (use-package org-noter
   :commands (org-noter)
   :custom
@@ -1125,6 +1130,72 @@ Wired to =SPC r=.
     ("i" "Toggle IPA"      toggle-input-method)
     ("s" "Correct word"    e6/spell-correct)]])
 #+end_src
+
+* Email — himalaya
+:PROPERTIES:
+:CUSTOM_ID: email
+:END:
+
+*Pass 6* — email via [[https://github.com/pimalaya/himalaya][himalaya]], one cross-platform CLI binary, with its Emacs
+front-end. Open the mailbox with =SPC m= (or =M-x himalaya=). The Emacs side is
+just a thin UI over the CLI; *accounts and credentials live in himalaya's own
+config*, not here — so this block holds no secrets.
+
+#+begin_src emacs-lisp
+(use-package himalaya
+  :commands (himalaya)
+  :custom
+  ;; Assumes `himalaya' is on PATH; set an absolute path here if not.
+  (himalaya-executable "himalaya"))
+#+end_src
+
+** One-time setup (do this later, yourself)
+:PROPERTIES:
+:CUSTOM_ID: email-setup
+:END:
+
+The Emacs package above is ready; it needs the =himalaya= CLI and a configured
+Gmail account. *You'll do these steps — they involve a password, which I won't
+touch:*
+
+1. *Install the CLI:* Windows =scoop install himalaya= (or =cargo install
+   himalaya=); Linux via your package manager or =cargo=. Check with
+   =himalaya --version=.
+2. *Google side:* turn on *2-Step Verification*, then create an *App Password*
+   (Google Account → Security → App passwords). This 16-char password is used
+   instead of your real one.
+3. *himalaya config* at =~/.config/himalaya/config.toml= (himalaya can generate
+   it with =himalaya account configure gmail=). A minimal Gmail account looks
+   like:
+
+   #+begin_example
+   [accounts.gmail]
+   default = true
+   email = "uni.elihu@gmail.com"
+   display-name = "Elihu SoNy"
+
+   backend.type = "imap"
+   backend.host = "imap.gmail.com"
+   backend.port = 993
+   backend.login = "uni.elihu@gmail.com"
+   backend.auth.type = "password"
+   # Use the Gmail APP PASSWORD here (or a keyring/command — see himalaya docs)
+   backend.auth.raw = "PASTE-APP-PASSWORD"
+
+   message.send.backend.type = "smtp"
+   message.send.backend.host = "smtp.gmail.com"
+   message.send.backend.port = 465
+   message.send.backend.login = "uni.elihu@gmail.com"
+   message.send.backend.auth.type = "password"
+   message.send.backend.auth.raw = "PASTE-APP-PASSWORD"
+   #+end_example
+
+   Prefer not to store the password in plain text? himalaya supports
+   =auth.type = "command"= (e.g. reading from =pass=, the Windows Credential
+   Manager, or =authinfo.gpg=) — see the himalaya docs. OAuth2 is intentionally
+   *not* used here (fragile in himalaya today); the app password is the reliable
+   path.
+4. Test on the CLI: =himalaya envelope list=. Then in Emacs: =SPC m=.
 
 * File footer
 :PROPERTIES:
