@@ -590,5 +590,27 @@ REPLACE the region/buffer in place."
   ;; Assumes `himalaya' is on PATH; set an absolute path here if not.
   (himalaya-executable "himalaya"))
 
+(use-package enlight
+  :demand t
+  :config
+  (setq enlight-content
+        (concat
+         (propertize "\n  E6's Emacs — scholar's desk\n\n" 'face 'shadow)
+         (enlight-menu
+          '(("Notes"
+             ("Capture"       org-capture         "c")
+             ("Inbox"         e6/open-inbox       "i")
+             ("Agenda"        org-agenda          "a")
+             ("Guide"         e6/open-guide       "g"))
+            ("Open"
+             ("Recent file"   consult-recent-file "r")
+             ("Find file"     find-file           "f")
+             ("Switch buffer" consult-buffer      "b"))
+            ("Do"
+             ("Magit"         magit-status        "m")
+             ("Elfeed"        elfeed              "e")
+             ("Edit config"   (find-file (expand-file-name "Config.org" e6/config-directory)) "C"))))))
+  (setopt initial-buffer-choice #'enlight))
+
 (provide 'post-init)
 ;;; post-init.el ends here

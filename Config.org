@@ -1199,6 +1199,42 @@ touch:*
    path.
 4. Test on the CLI: =himalaya envelope list=. Then in Emacs: =SPC m=.
 
+* Dashboard — enlight
+:PROPERTIES:
+:CUSTOM_ID: dashboard
+:END:
+
+*Pass 7* — a minimal [[https://github.com/ichernyshovvv/enlight][enlight]] start screen (replaces the scratch buffer at startup):
+a greeting and a single-column menu of one-key actions. Press the letter shown
+next to an entry. Rebuild the menu by editing =enlight-content= below.
+
+(=grid.el= — used only for multi-column layouts — isn't on the standard
+archives, so we keep a clean single column.)
+
+#+begin_src emacs-lisp
+(use-package enlight
+  :demand t
+  :config
+  (setq enlight-content
+        (concat
+         (propertize "\n  E6's Emacs — scholar's desk\n\n" 'face 'shadow)
+         (enlight-menu
+          '(("Notes"
+             ("Capture"       org-capture         "c")
+             ("Inbox"         e6/open-inbox       "i")
+             ("Agenda"        org-agenda          "a")
+             ("Guide"         e6/open-guide       "g"))
+            ("Open"
+             ("Recent file"   consult-recent-file "r")
+             ("Find file"     find-file           "f")
+             ("Switch buffer" consult-buffer      "b"))
+            ("Do"
+             ("Magit"         magit-status        "m")
+             ("Elfeed"        elfeed              "e")
+             ("Edit config"   (find-file (expand-file-name "Config.org" e6/config-directory)) "C"))))))
+  (setopt initial-buffer-choice #'enlight))
+#+end_src
+
 * File footer
 :PROPERTIES:
 :CUSTOM_ID: file-footer
