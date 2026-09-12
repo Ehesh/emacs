@@ -255,12 +255,14 @@ REPLACE the region/buffer in place."
    '("/"   . consult-line)
    '("TAB" . comment-line)
    '("u"   . universal-argument)
+   '("c"   . org-capture)
    '("|"   . e6/pipe-to-ai)
    ;; Menus
    '("b"   . e6/buffers-menu)
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("n"   . e6/notes-menu)
    '("s"   . e6/search-menu)
    '("t"   . e6/toggle-menu)
    '("w"   . e6/windows-menu)))
@@ -379,6 +381,125 @@ REPLACE the region/buffer in place."
     ("g" "Ripgrep" consult-ripgrep)
     ("G" "Grep"    consult-grep)
     ("f" "Find"    consult-find)]])
+
+(defconst e6/notes-directory
+  (expand-file-name "org"
+                    (cond (e6/windows-p (or (getenv "USERPROFILE") "~"))
+                          (t "~")))
+  "Directory holding Org notes (outside the config repo).")
+
+(defconst e6/config-directory
+  (file-name-directory
+   (or load-file-name buffer-file-name
+       (expand-file-name "post-init.el" user-emacs-directory)))
+  "Directory where this configuration lives (post-init.el's folder).")
+
+(unless (file-directory-p e6/notes-directory)
+  (make-directory e6/notes-directory t))
+
+(use-package org
+  :ensure nil
+  :config
+  (require 'org-tempo)
+  (setq org-directory e6/notes-directory
+        org-default-notes-file (expand-file-name "inbox.org" org-directory)
+        org-agenda-files (list org-directory)
+        org-startup-indented t
+        org-startup-folded 'content
+        org-return-follows-link t
+        org-catch-invisible-edits 'show-and-error
+        org-insert-heading-respect-content t
+        org-ellipsis "…"
+        org-tags-column 0
+        org-auto-align-tags nil
+        org-src-fontify-natively t
+        org-src-tab-acts-natively t
+        org-edit-src-content-indentation 0))
+
+;; Make sure the inbox exists with the target headings.
+(let ((inbox (expand-file-name "inbox.org" e6/notes-directory)))
+  (unless (file-exists-p inbox)
+    (with-temp-file inbox
+      (insert "#+TITLE: Inbox\n#+STARTUP: overview\n\n* Inbox\n\n* Tasks\n"))))
+
+(with-eval-after-load 'org
+  (setq org-capture-templates
+        '(("i" "Inbox — fleeting idea" entry
+           (file+headline org-default-notes-file "Inbox")
+           "* %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n" :empty-lines 1)
+          ("t" "Task" entry
+           (file+headline org-default-notes-file "Tasks")
+           "* TODO %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n" :empty-lines 1))))
+
+(keymap-global-set "C-c c" #'org-capture)
+
+(use-package toc-org
+  :hook (org-mode . toc-org-enable))
+
+(use-package valign
+  :hook (org-mode . valign-mode)
+  :custom
+  (valign-fancy-bar t))
+
+(use-package org-transclusion
+  :after org
+  :commands (org-transclusion-add org-transclusion-add-all org-transclusion-mode))
+
+(use-package org-download
+  :after org
+  :custom
+  (org-download-method 'directory)
+  (org-download-image-dir (expand-file-name "images" e6/notes-directory))
+  (org-download-heading-lvl nil)
+  :config
+  (when e6/windows-p
+    ;; Use PowerShell to grab the clipboard image on Windows.
+    (setq org-download-screenshot-method "powershell -Command \"(Get-Clipboard -Format Image).Save('%s')\"")))
+
+(use-package elfeed
+  :commands elfeed
+  :config
+  (setq elfeed-search-filter "@2-weeks-ago"
+        elfeed-feeds
+        '(("https://linguistlist.org/issues/rss/calls"    ll cfp)
+          ("https://linguistlist.org/issues/rss/confs"    ll conferences)
+          ("https://linguistlist.org/issues/rss/jobs"     ll jobs)
+          ("https://linguistlist.org/issues/rss/diss"     ll dissertations)
+          ("https://linguistlist.org/issues/rss/books"    ll books)
+          ("https://linguistlist.org/issues/rss/software" ll tools)
+          ("https://linguistlist.org/issues/rss/media"    ll media)
+          ("https://linguistlist.org/issues/rss/toc"      ll journals)
+          ("https://languagelog.ldc.upenn.edu/nll/?feed=rss2" blog languagelog))))
+
+(use-package elfeed-goodies
+  :after elfeed
+  :config
+  (elfeed-goodies/setup)
+  (setq elfeed-goodies/entry-pane-size 0.5))
+
+(defun e6/open-guide ()
+  "Open the Org & notes starter guide."
+  (interactive)
+  (find-file (expand-file-name "guide.org" e6/config-directory)))
+
+(defun e6/open-inbox ()
+  "Open the capture inbox."
+  (interactive)
+  (find-file (expand-file-name "inbox.org" e6/notes-directory)))
+
+(transient-define-prefix e6/notes-menu ()
+  "Notes & research."
+  [["Capture / open"
+    ("c" "Capture"     org-capture)
+    ("i" "Inbox"       e6/open-inbox)
+    ("a" "Agenda"      org-agenda)
+    ("G" "Guide"       e6/open-guide)]
+   ["Transclude"
+    ("t" "Add here"    org-transclusion-add)
+    ("T" "Mode"        org-transclusion-mode)]
+   ["Media / read"
+    ("d" "Paste image" org-download-clipboard)
+    ("e" "Elfeed"      elfeed)]])
 
 (provide 'post-init)
 ;;; post-init.el ends here

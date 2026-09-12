@@ -514,12 +514,14 @@ the menus are defined so meow can resolve the symbols.
    '("/"   . consult-line)
    '("TAB" . comment-line)
    '("u"   . universal-argument)
+   '("c"   . org-capture)
    '("|"   . e6/pipe-to-ai)
    ;; Menus
    '("b"   . e6/buffers-menu)
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
    '("h"   . e6/help-menu)
+   '("n"   . e6/notes-menu)
    '("s"   . e6/search-menu)
    '("t"   . e6/toggle-menu)
    '("w"   . e6/windows-menu)))
@@ -731,6 +733,235 @@ entries need the =rg= binary installed; grep is the portable fallback.
     ("g" "Ripgrep" consult-ripgrep)
     ("G" "Grep"    consult-grep)
     ("f" "Find"    consult-find)]])
+#+end_src
+
+* Org & notes
+:PROPERTIES:
+:CUSTOM_ID: org-notes
+:END:
+
+*Pass 4* — the scholar's desk: an Org base, a one-key capture inbox, transclusion
+for assembling notes/thesis by reference, aligned tables for glossing,
+image drag/paste, a linguistics feed reader, and a hands-on starter guide.
+
+** Where notes live
+:PROPERTIES:
+:CUSTOM_ID: notes-dir
+:END:
+
+Notes live *outside* this config repo (they're your data, not config), in an
+=org/= folder under your real home. We compute it robustly so it's the same
+whether Emacs is launched from the Start menu or a shell (=USERPROFILE= on
+Windows, =~= on Linux). We also record where this config lives, for opening the
+guide reliably.
+
+#+begin_src emacs-lisp
+(defconst e6/notes-directory
+  (expand-file-name "org"
+                    (cond (e6/windows-p (or (getenv "USERPROFILE") "~"))
+                          (t "~")))
+  "Directory holding Org notes (outside the config repo).")
+
+(defconst e6/config-directory
+  (file-name-directory
+   (or load-file-name buffer-file-name
+       (expand-file-name "post-init.el" user-emacs-directory)))
+  "Directory where this configuration lives (post-init.el's folder).")
+
+(unless (file-directory-p e6/notes-directory)
+  (make-directory e6/notes-directory t))
+#+end_src
+
+** Org base
+:PROPERTIES:
+:CUSTOM_ID: org-base
+:END:
+
+Core Org settings (=:ensure nil= — Org is built in, don't fetch it from ELPA).
+=org-tempo= gives =<s TAB= → source-block expansion.
+
+#+begin_src emacs-lisp
+(use-package org
+  :ensure nil
+  :config
+  (require 'org-tempo)
+  (setq org-directory e6/notes-directory
+        org-default-notes-file (expand-file-name "inbox.org" org-directory)
+        org-agenda-files (list org-directory)
+        org-startup-indented t
+        org-startup-folded 'content
+        org-return-follows-link t
+        org-catch-invisible-edits 'show-and-error
+        org-insert-heading-respect-content t
+        org-ellipsis "…"
+        org-tags-column 0
+        org-auto-align-tags nil
+        org-src-fontify-natively t
+        org-src-tab-acts-natively t
+        org-edit-src-content-indentation 0))
+#+end_src
+
+** Capture — inbox for fleeting ideas
+:PROPERTIES:
+:CUSTOM_ID: capture
+:END:
+
+One-key capture into =inbox.org= (=SPC c= or =C-c c=). The inbox file is created
+with its headings on first run so capture never fails.
+
+#+begin_src emacs-lisp
+;; Make sure the inbox exists with the target headings.
+(let ((inbox (expand-file-name "inbox.org" e6/notes-directory)))
+  (unless (file-exists-p inbox)
+    (with-temp-file inbox
+      (insert "#+TITLE: Inbox\n#+STARTUP: overview\n\n* Inbox\n\n* Tasks\n"))))
+
+(with-eval-after-load 'org
+  (setq org-capture-templates
+        '(("i" "Inbox — fleeting idea" entry
+           (file+headline org-default-notes-file "Inbox")
+           "* %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n" :empty-lines 1)
+          ("t" "Task" entry
+           (file+headline org-default-notes-file "Tasks")
+           "* TODO %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n" :empty-lines 1))))
+
+(keymap-global-set "C-c c" #'org-capture)
+#+end_src
+
+** TOC-Org
+:PROPERTIES:
+:CUSTOM_ID: toc-org
+:END:
+
+Auto-maintains a =:toc:= heading's table of contents on save.
+
+#+begin_src emacs-lisp
+(use-package toc-org
+  :hook (org-mode . toc-org-enable))
+#+end_src
+
+** valign — aligned tables under variable-pitch
+:PROPERTIES:
+:CUSTOM_ID: valign
+:END:
+
+Pixel-aligns table columns even in the variable-pitch font, so glossing and
+example tables stay crisp. Can lag on very large tables — toggle with
+=M-x valign-mode=.
+
+#+begin_src emacs-lisp
+(use-package valign
+  :hook (org-mode . valign-mode)
+  :custom
+  (valign-fancy-bar t))
+#+end_src
+
+** org-transclusion — assemble by reference
+:PROPERTIES:
+:CUSTOM_ID: transclusion
+:END:
+
+Live-include the content of one Org file/heading inside another (thesis/notes
+assembly). Add a =#+transclude:= line, then =org-transclusion-add= (or turn on
+=org-transclusion-mode= to render them all).
+
+#+begin_src emacs-lisp
+(use-package org-transclusion
+  :after org
+  :commands (org-transclusion-add org-transclusion-add-all org-transclusion-mode))
+#+end_src
+
+** org-download — drag/paste images
+:PROPERTIES:
+:CUSTOM_ID: org-download
+:END:
+
+Drop or paste figures/screenshots straight into notes; files land in an
+=images/= folder beside your notes.
+
+#+begin_src emacs-lisp
+(use-package org-download
+  :after org
+  :custom
+  (org-download-method 'directory)
+  (org-download-image-dir (expand-file-name "images" e6/notes-directory))
+  (org-download-heading-lvl nil)
+  :config
+  (when e6/windows-p
+    ;; Use PowerShell to grab the clipboard image on Windows.
+    (setq org-download-screenshot-method "powershell -Command \"(Get-Clipboard -Format Image).Save('%s')\"")))
+#+end_src
+
+** elfeed — linguistics feeds
+:PROPERTIES:
+:CUSTOM_ID: elfeed
+:END:
+
+RSS reader, feeds rebuilt around linguistics (prune freely). Open with =SPC n e=.
+
+#+begin_src emacs-lisp
+(use-package elfeed
+  :commands elfeed
+  :config
+  (setq elfeed-search-filter "@2-weeks-ago"
+        elfeed-feeds
+        '(("https://linguistlist.org/issues/rss/calls"    ll cfp)
+          ("https://linguistlist.org/issues/rss/confs"    ll conferences)
+          ("https://linguistlist.org/issues/rss/jobs"     ll jobs)
+          ("https://linguistlist.org/issues/rss/diss"     ll dissertations)
+          ("https://linguistlist.org/issues/rss/books"    ll books)
+          ("https://linguistlist.org/issues/rss/software" ll tools)
+          ("https://linguistlist.org/issues/rss/media"    ll media)
+          ("https://linguistlist.org/issues/rss/toc"      ll journals)
+          ("https://languagelog.ldc.upenn.edu/nll/?feed=rss2" blog languagelog))))
+
+(use-package elfeed-goodies
+  :after elfeed
+  :config
+  (elfeed-goodies/setup)
+  (setq elfeed-goodies/entry-pane-size 0.5))
+#+end_src
+
+** Starter guide command
+:PROPERTIES:
+:CUSTOM_ID: guide
+:END:
+
+Open the hands-on Org & notes guide (=guide.org=, kept in the config repo).
+
+#+begin_src emacs-lisp
+(defun e6/open-guide ()
+  "Open the Org & notes starter guide."
+  (interactive)
+  (find-file (expand-file-name "guide.org" e6/config-directory)))
+
+(defun e6/open-inbox ()
+  "Open the capture inbox."
+  (interactive)
+  (find-file (expand-file-name "inbox.org" e6/notes-directory)))
+#+end_src
+
+** Notes & research menu
+:PROPERTIES:
+:CUSTOM_ID: notes-menu
+:END:
+
+Wired to =SPC n=.
+
+#+begin_src emacs-lisp
+(transient-define-prefix e6/notes-menu ()
+  "Notes & research."
+  [["Capture / open"
+    ("c" "Capture"     org-capture)
+    ("i" "Inbox"       e6/open-inbox)
+    ("a" "Agenda"      org-agenda)
+    ("G" "Guide"       e6/open-guide)]
+   ["Transclude"
+    ("t" "Add here"    org-transclusion-add)
+    ("T" "Mode"        org-transclusion-mode)]
+   ["Media / read"
+    ("d" "Paste image" org-download-clipboard)
+    ("e" "Elfeed"      elfeed)]])
 #+end_src
 
 * File footer

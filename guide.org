@@ -1,0 +1,154 @@
+#+TITLE: E6's Emacs — Org & Notes Starter Guide
+#+STARTUP: overview
+#+OPTIONS: toc:2
+
+A hands-on guide to *actually using* this Emacs. Open it any time with =SPC n G=.
+Work through it in order; do the little exercises. Everything here works in this
+config as shipped.
+
+* First: how to move and type (meow)
+:PROPERTIES:
+:CUSTOM_ID: meow
+:END:
+
+Buffers start in *NORMAL* state — letters are commands, not text.
+
+- =i= → *insert* (now you type normally).  =ESC= → back to normal.
+- Move: =h j k l= (left/down/up/right), =w=/=b= (word forward/back),
+  =e= (next word), =x= (select whole line).
+- Select then act: =x= (line) then =s= (kill) or =y= (copy) or =c= (change).
+- Undo: =u=.  Search: =/= is the leader search; in normal state =n= repeats.
+- *Panic button:* =M-x meow-global-mode= turns modal editing off entirely.
+- Full layout: =M-x meow-cheatsheet=.
+
+*Exercise:* put the cursor on this line, press =x= (selects it), then =y=
+(copies), move down, press =p= (paste).
+
+* The leader (SPC) — your command palette
+:PROPERTIES:
+:CUSTOM_ID: leader
+:END:
+
+In normal state press =SPC=, wait, and which-key shows the options.
+
+| Key       | Does                                             |
+|-----------+--------------------------------------------------|
+| =SPC SPC= | Run any command (M-x)                             |
+| =SPC .=   | Find file                                        |
+| =SPC ,=   | Switch buffer (consult)                          |
+| =SPC /=   | Search this buffer (consult-line)                |
+| =SPC c=   | Capture a note (see below)                       |
+| =SPC \vert= | Pipe region/buffer to an AI CLI                |
+| =SPC b/f/w= | Buffers / Files / Windows menus                |
+| =SPC g=   | Git (Magit)                                      |
+| =SPC n=   | Notes & research menu                            |
+| =SPC s=   | Search menu (line, ripgrep, grep, imenu…)        |
+| =SPC t=   | Toggles (wrap, line numbers, dark/light theme…)  |
+| =SPC h=   | Help (describe function/variable/key/mode)       |
+
+* Org basics
+:PROPERTIES:
+:CUSTOM_ID: org-basics
+:END:
+
+** Headings and folding
+=*=, =**=, =***= make headings. =TAB= folds/unfolds a heading;
+=S-TAB= cycles the whole document.
+
+** TODOs
+Type =* TODO Something=. Press =S-<right>/<left>= (shift-arrows) on the heading
+to cycle TODO → DONE. =C-c C-t= sets the state directly.
+
+** Links
+=C-c C-l= inserts a link (to a file, a heading, a URL). =RET= on a link follows
+it (this config sets =org-return-follows-link=).
+
+** Emphasis
+=*bold*=, =/italic/=, ==code==, =~verbatim~=. Markers are hidden until your
+cursor is on the word (org-appear) — that's normal.
+
+** Source blocks
+Type =<s= then =TAB= (org-tempo) to expand a =#+begin_src … #+end_src= block.
+
+* Capture — never lose a fleeting idea
+:PROPERTIES:
+:CUSTOM_ID: capture
+:END:
+
+Press =SPC c= (or =C-c c=), pick:
+- =i= — Inbox: a quick idea → filed under *Inbox* in =inbox.org=.
+- =t= — Task: a TODO → filed under *Tasks*.
+
+Type the note, then =C-c C-c= to save it (or =C-c C-k= to cancel). Your inbox
+lives in your =org/= folder (outside this config). Open it with =SPC n i=.
+
+*Exercise:* =SPC c i=, type "try org capture", =C-c C-c=. Then =SPC n i= to see it.
+
+* Tables and glossing
+:PROPERTIES:
+:CUSTOM_ID: tables
+:END:
+
+Start a table by typing a header line with pipes and pressing =TAB=:
+
+: | Form | Gloss | Notes |
+: |------+-------+-------|
+
+=TAB= moves to the next cell (creating rows as needed); =|-= then =TAB= draws a
+rule. Columns stay pixel-aligned even in the prose font (valign) — good for
+interlinear examples. Toggle valign with =M-x valign-mode= if a huge table lags.
+
+* Assembling notes by reference (transclusion)
+:PROPERTIES:
+:CUSTOM_ID: transclusion
+:END:
+
+To pull the live content of another file/heading into the current document, add
+a line like:
+
+: #+transclude: [[file:chapter1.org::*Method]]
+
+Then =SPC n t= (=org-transclusion-add=) to render it, or =SPC n T= to toggle the
+whole buffer. Edits stay in the source file — great for stitching a thesis from
+section files without copy-paste.
+
+* Images
+:PROPERTIES:
+:CUSTOM_ID: images
+:END:
+
+Copy an image to the clipboard, then =SPC n d= (=org-download-clipboard=) to drop
+it into the note; the file is saved under =images/= beside your notes. You can
+also drag a file from the OS into an Org buffer.
+
+* Reading — feeds
+:PROPERTIES:
+:CUSTOM_ID: feeds
+:END:
+
+=SPC n e= opens elfeed (linguistics feeds — LINGUIST List calls, jobs, journals,
+Language Log). =G= refreshes, =RET= reads an entry, =s= filters. Edit the feed
+list in the *elfeed* block of =Config.org=.
+
+* Export (later)
+:PROPERTIES:
+:CUSTOM_ID: export
+:END:
+
+Export tooling (Quarto, Typst) is a later pass. For now, =C-c C-e= opens Org's
+export dispatcher for the built-in backends.
+
+* The config workflow (important)
+:PROPERTIES:
+:CUSTOM_ID: workflow
+:END:
+
+- All settings live in =Config.org=. Open it, edit a block, *save* — it
+  auto-tangles to =post-init.el=. Restart Emacs (or re-eval) to apply.
+- *Never* hand-edit the =*-init.el= files; they're generated.
+- The base (=init.el=, =early-init.el=) is minimal-emacs.d — don't edit those
+  either; customise via =Config.org=.
+- It's a git repo: =SPC g g= for Magit. Commit as you change things; pull/push
+  to sync your other machine.
+
+Happy writing.
