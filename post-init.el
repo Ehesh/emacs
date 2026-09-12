@@ -586,6 +586,13 @@ REPLACE the region/buffer in place."
     ("i" "Toggle IPA"      toggle-input-method)
     ("s" "Correct word"    e6/spell-correct)]])
 
+(when (executable-find "uv")
+  (with-eval-after-load 'ob-python
+    (setq org-babel-python-command "uv run python"))
+  (with-eval-after-load 'python
+    (setq python-shell-interpreter "uv"
+          python-shell-interpreter-args "run python -i")))
+
 (use-package himalaya
   :commands (himalaya)
   :custom
@@ -629,12 +636,15 @@ REPLACE the region/buffer in place."
   :type 'string :group 'e6-readback)
 (defcustom e6/readback-mpv-socket "/tmp/e6-readback-mpv.sock"
   "Unix socket for mpv IPC." :type 'string :group 'e6-readback)
-(defcustom e6/readback-server-command '("python3")
+(defcustom e6/readback-server-command
+  (if (executable-find "uv")
+      '("uv" "run" "--with" "nemo_toolkit[asr]" "python")
+    '("python3"))
   "Command (list) that launches the Parakeet server; the script path is appended.
-Pick whichever Python toolchain you use. Examples:
+Defaults to uv when available (uv resolves/caches nemo on first run, so it works
+with no manual venv). Other options:
   (\"python3\")                                  ; a Python with nemo installed
-  (\"/home/you/.venvs/parakeet/bin/python\")     ; a uv- or venv-managed Python
-  (\"uv\" \"run\" \"--with\" \"nemo_toolkit[asr]\" \"python\") ; uv, ephemeral env"
+  (\"/home/you/.venvs/parakeet/bin/python\")     ; a uv- or venv-managed Python"
   :type '(repeat string) :group 'e6-readback)
 (defcustom e6/readback-stt-port 8123
   "Localhost port for the Parakeet server." :type 'integer :group 'e6-readback)

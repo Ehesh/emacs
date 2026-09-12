@@ -1135,6 +1135,29 @@ Wired to =SPC r=.
     ("s" "Correct word"    e6/spell-correct)]])
 #+end_src
 
+* Python via uv
+:PROPERTIES:
+:CUSTOM_ID: python-uv
+:END:
+
+Route Python through [[https://docs.astral.sh/uv/][uv]] when it's on PATH: Org-Babel =python= blocks and the
+inferior =python= shell run via =uv run python= (uv picks/creates a suitable
+environment and caches it). Falls back to plain =python3= if uv isn't installed,
+so this stays safe on any machine.
+
+#+begin_src emacs-lisp
+(when (executable-find "uv")
+  (with-eval-after-load 'ob-python
+    (setq org-babel-python-command "uv run python"))
+  (with-eval-after-load 'python
+    (setq python-shell-interpreter "uv"
+          python-shell-interpreter-args "run python -i")))
+#+end_src
+
+Tip: for a project's own dependencies, run Emacs (or the block) from a directory
+with a =uv= project/venv and =uv run= will use it automatically. To use a package
+ad hoc, remember =uv run --with PKG python=.
+
 * Email — himalaya
 :PROPERTIES:
 :CUSTOM_ID: email
@@ -1286,12 +1309,15 @@ and =curl=. Install via *uv* (preferred) or pipx — see the README's
   :type 'string :group 'e6-readback)
 (defcustom e6/readback-mpv-socket "/tmp/e6-readback-mpv.sock"
   "Unix socket for mpv IPC." :type 'string :group 'e6-readback)
-(defcustom e6/readback-server-command '("python3")
+(defcustom e6/readback-server-command
+  (if (executable-find "uv")
+      '("uv" "run" "--with" "nemo_toolkit[asr]" "python")
+    '("python3"))
   "Command (list) that launches the Parakeet server; the script path is appended.
-Pick whichever Python toolchain you use. Examples:
+Defaults to uv when available (uv resolves/caches nemo on first run, so it works
+with no manual venv). Other options:
   (\"python3\")                                  ; a Python with nemo installed
-  (\"/home/you/.venvs/parakeet/bin/python\")     ; a uv- or venv-managed Python
-  (\"uv\" \"run\" \"--with\" \"nemo_toolkit[asr]\" \"python\") ; uv, ephemeral env"
+  (\"/home/you/.venvs/parakeet/bin/python\")     ; a uv- or venv-managed Python"
   :type '(repeat string) :group 'e6-readback)
 (defcustom e6/readback-stt-port 8123
   "Localhost port for the Parakeet server." :type 'integer :group 'e6-readback)

@@ -65,26 +65,32 @@ uv tool install piper-tts                    # provides the `piper` binary
 mkdir -p ~/.local/share/piper
 # e.g. en_US-lessac-medium and es_ES-davefx-medium from the Piper voices repo
 
-# Parakeet STT server env (heavy: pulls torch)
+```
+
+**STT server:** if `uv` is on PATH, `e6/readback-server-command` already
+defaults to `("uv" "run" "--with" "nemo_toolkit[asr]" "python")` — so the
+Parakeet server just works, no venv needed (the first launch downloads torch;
+uv caches it afterward). Set your Piper voice paths if they differ
+(`e6/readback-piper-voice-en` / `-es`).
+
+Prefer a persistent, pinned env (faster cold start)? Create one and point the
+launcher at it:
+
+```bash
 uv venv ~/.venvs/parakeet
 uv pip install --python ~/.venvs/parakeet -r scripts/requirements.txt
 ```
-
-Then point the server launcher at that env — `M-x customize-variable RET
-e6/readback-server-command` (or edit the *Settings* block in `Config.org`):
-
 ```elisp
-;; use the uv-managed venv Python:
 (setq e6/readback-server-command '("/home/YOU/.venvs/parakeet/bin/python"))
-;; or run ephemerally without a venv:
-(setq e6/readback-server-command '("uv" "run" "--with" "nemo_toolkit[asr]" "python"))
 ```
 
-Set your voice paths if they differ (`e6/readback-piper-voice-en` / `-es`).
-
 **Alternative with pipx / pip:** `pipx install piper-tts`, and
-`pip install -U "nemo_toolkit[asr]"` into a Python that
-`e6/readback-server-command` (default `("python3")`) resolves to.
+`pip install -U "nemo_toolkit[asr]"` into a Python, then set
+`e6/readback-server-command` to `("python3")`.
+
+> Python elsewhere in this config (Org-Babel `python` blocks, the inferior
+> Python shell) is also routed through `uv run python` when uv is on PATH — see
+> the "Python via uv" section in `Config.org`.
 
 ## Updating the minimal-emacs.d base
 
