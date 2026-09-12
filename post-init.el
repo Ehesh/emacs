@@ -756,6 +756,10 @@ with no manual venv). Other options:
 (defvar e6/readback--rec-file nil)
 (defvar e6/readback--anchor nil
   "Marker at the end of the paragraph being reviewed (comment anchor).")
+(defvar e6/readback--units nil
+  "Ordered list of paragraph/heading plists (:beg :end :text :wav :state) to read.")
+(defvar e6/readback--pos 0 "Index into `e6/readback--units' currently playing.")
+(defvar e6/readback--playing nil "Non-nil while a read-through is active.")
 
 (defun e6/readback--para-bounds ()
   "Return (BEG . END) of the current paragraph's prose, excluding # comments."
@@ -822,36 +826,44 @@ with no manual venv). Other options:
     (delete-process e6/readback--tts-proc))
   (setq e6/readback--tts-lang nil))
 
-;; --- synthesis (engine dispatch) --------------------------------------------
-(defun e6/readback--synth-pocket (text wav)
-  "Synthesize TEXT to WAV via the pocket-tts HTTP server (POST /tts)."
-  (e6/readback--start-tts-server)
-  (let ((tf (make-temp-file "e6-tts-in" nil ".txt")))
-    (unwind-protect
-        (progn
-          (with-temp-file tf (insert text))
-          (call-process "curl" nil nil nil "-s" "-X" "POST"
-                        "-F" (format "text=<%s" tf)
-                        "-o" wav
-                        (format "http://%s:%d/tts"
-                                e6/readback-tts-host e6/readback-tts-port)))
-      (ignore-errors (delete-file tf)))))
-
-(defun e6/readback--synth-piper (text wav)
-  "Synthesize TEXT to WAV with Piper."
-  (with-temp-buffer
-    (insert text)
-    (call-process-region (point-min) (point-max)
-                         e6/readback-piper-executable nil nil nil
-                         "--model" (if (eq e6/readback-language 'es)
-                                       e6/readback-piper-voice-es
-                                     e6/readback-piper-voice-en)
-                         "--output_file" wav)))
-
-(defun e6/readback--synth (text wav)
+;; --- synthesis (asynchronous, so we can prefetch ahead) ---------------------
+(defun e6/readback--synth-command (text-file wav)
+  "Shell command string that synthesizes TEXT-FILE to WAV (Linux)."
   (if (eq e6/readback-tts-engine 'piper)
-      (e6/readback--synth-piper text wav)
-    (e6/readback--synth-pocket text wav)))
+      (format "%s --model %s --output_file %s < %s"
+              (shell-quote-argument e6/readback-piper-executable)
+              (shell-quote-argument (if (eq e6/readback-language 'es)
+                                        e6/readback-piper-voice-es
+                                      e6/readback-piper-voice-en))
+              (shell-quote-argument wav)
+              (shell-quote-argument text-file))
+    ;; pocket-tts HTTP server: read the text field from the file
+    (format "curl -s -X POST -F %s -o %s http://%s:%d/tts"
+            (shell-quote-argument (concat "text=<" text-file))
+            (shell-quote-argument wav)
+            e6/readback-tts-host e6/readback-tts-port)))
+
+(defun e6/readback--synth-async (unit callback)
+  "Synthesize UNIT's text to a temp WAV asynchronously, then call CALLBACK.
+Sets UNIT's :wav and :state (ready or error)."
+  (when (eq e6/readback-tts-engine 'pocket)
+    (e6/readback--start-tts-server))
+  (let* ((wav (make-temp-file "e6-tts" nil ".wav"))
+         (txt (make-temp-file "e6-tts-in" nil ".txt")))
+    (with-temp-file txt (insert (plist-get unit :text)))
+    (plist-put unit :state 'synthing)
+    (let ((proc (start-process-shell-command
+                 "e6-synth" nil (e6/readback--synth-command txt wav))))
+      (set-process-sentinel
+       proc
+       (lambda (p _e)
+         (when (memq (process-status p) '(exit signal))
+           (ignore-errors (delete-file txt))
+           (if (and (file-exists-p wav)
+                    (> (file-attribute-size (file-attributes wav)) 0))
+               (progn (plist-put unit :wav wav) (plist-put unit :state 'ready))
+             (plist-put unit :state 'error))
+           (when callback (funcall callback unit))))))))
 
 ;; --- playback (mpv) + speed -------------------------------------------------
 (defun e6/readback--mpv-cmd (json)
@@ -866,13 +878,100 @@ with no manual venv). Other options:
   (e6/readback--mpv-cmd
    (format "{\"command\":[\"set_property\",\"pause\",%s]}" (if yes "true" "false"))))
 
-(defun e6/readback--play-file (wav)
-  (e6/readback-stop)
+(defun e6/readback--play-wav (wav)
+  "Play WAV; when it ends naturally, advance to the next unit."
+  (when (process-live-p e6/readback--play-proc)
+    (set-process-sentinel e6/readback--play-proc #'ignore)
+    (delete-process e6/readback--play-proc))
   (setq e6/readback--play-proc
         (start-process "e6-mpv" nil e6/readback-mpv-executable
                        (format "--input-ipc-server=%s" e6/readback-mpv-socket)
                        (format "--speed=%s" e6/readback-speed)
-                       "--no-terminal" "--no-video" "--idle=no" wav)))
+                       "--no-terminal" "--no-video" "--idle=no" wav))
+  (set-process-sentinel
+   e6/readback--play-proc
+   (lambda (p _e)
+     (when (and (eq (process-status p) 'exit)
+                (= (process-exit-status p) 0)
+                e6/readback--playing)
+       (setq e6/readback--pos (1+ e6/readback--pos))
+       (e6/readback--play-unit)))))
+
+;; --- sectional reading pipeline ---------------------------------------------
+(defun e6/readback--section-end ()
+  "End position of the region to read: current Org subtree, else end of buffer."
+  (save-excursion
+    (cond
+     ((and (derived-mode-p 'org-mode) (org-before-first-heading-p))
+      (or (save-excursion (when (re-search-forward (concat "^" org-outline-regexp) nil t)
+                            (line-beginning-position)))
+          (point-max)))
+     ((derived-mode-p 'org-mode)
+      (org-back-to-heading t) (org-end-of-subtree t t))
+     (t (point-max)))))
+
+(defun e6/readback--build-queue ()
+  "Collect readable units from the current paragraph to the section end."
+  (let ((start (save-excursion (backward-paragraph) (skip-chars-forward "\n") (point)))
+        (end   (e6/readback--section-end))
+        (units '()))
+    (save-excursion
+      (goto-char start)
+      (while (< (point) end)
+        (cond
+         ((looking-at-p "[ \t]*$") (forward-line 1))                 ; blank
+         ((and (derived-mode-p 'org-mode) (org-at-heading-p))        ; heading
+          (let ((b (point)) (title (org-get-heading t t t t)))
+            (end-of-line)
+            (push (list :beg b :end (copy-marker (point)) :text (or title "")
+                        :wav nil :state 'pending)
+                  units)
+            (forward-line 1)))
+         ((looking-at-p "[ \t]*#\\( \\|$\\)") (forward-line 1))       ; existing comment
+         (t                                                          ; prose paragraph
+          (let ((b (point)))
+            (while (and (< (point) end)
+                        (not (looking-at-p "[ \t]*$"))
+                        (not (looking-at-p "[ \t]*#\\( \\|$\\)"))
+                        (not (and (derived-mode-p 'org-mode) (org-at-heading-p))))
+              (forward-line 1))
+            (push (list :beg b :end (copy-marker (point))
+                        :text (string-trim (buffer-substring-no-properties b (point)))
+                        :wav nil :state 'pending)
+                  units)))))
+      (nreverse
+       (seq-filter (lambda (u) (not (string-empty-p (string-trim (plist-get u :text)))))
+                   units)))))
+
+(defun e6/readback--prefetch (i)
+  "Start synthesizing unit I in the background if it hasn't been yet."
+  (let ((u (nth i e6/readback--units)))
+    (when (and u (eq (plist-get u :state) 'pending))
+      (e6/readback--synth-async u #'e6/readback--on-synth-ready))))
+
+(defun e6/readback--on-synth-ready (unit)
+  "Play UNIT if it is the one we're currently waiting to play."
+  (when (and e6/readback--playing
+             (eq unit (nth e6/readback--pos e6/readback--units)))
+    (if (eq (plist-get unit :state) 'ready)
+        (e6/readback--play-wav (plist-get unit :wav))
+      (setq e6/readback--pos (1+ e6/readback--pos))   ; skip on error
+      (e6/readback--play-unit))))
+
+(defun e6/readback--play-unit ()
+  "Play the unit at `e6/readback--pos', prefetching the next."
+  (let ((unit (nth e6/readback--pos e6/readback--units)))
+    (if (null unit)
+        (progn (setq e6/readback--playing nil)
+               (message "Read to end of section."))
+      (setq e6/readback--anchor (plist-get unit :end))  ; comments anchor here
+      (e6/readback--prefetch (1+ e6/readback--pos))
+      (pcase (plist-get unit :state)
+        ('ready   (e6/readback--play-wav (plist-get unit :wav)))
+        ('error   (setq e6/readback--pos (1+ e6/readback--pos)) (e6/readback--play-unit))
+        ('pending (message "Synthesizing (%d/%d)…" (1+ e6/readback--pos) (length e6/readback--units))
+                  (e6/readback--synth-async unit #'e6/readback--on-synth-ready))
+        (_        (message "Synthesizing (%d/%d)…" (1+ e6/readback--pos) (length e6/readback--units)))))))
 
 (defun e6/readback-set-speed (delta)
   "Change playback speed by DELTA; also applies to the current playback."
@@ -891,31 +990,36 @@ with no manual venv). Other options:
 
 ;; --- reading ----------------------------------------------------------------
 (defun e6/readback-play ()
-  "Read the region, or the current paragraph's prose, aloud."
+  "Read from the current paragraph to the end of the section, continuously.
+Paragraphs are synthesized ahead in the background. With an active region,
+read just that region."
   (interactive)
-  (let* ((region (use-region-p))
-         (bounds (unless region (e6/readback--para-bounds)))
-         (text (string-trim
-                (if region
-                    (buffer-substring-no-properties (region-beginning) (region-end))
-                  (buffer-substring-no-properties (car bounds) (cdr bounds)))))
-         (wav (make-temp-file "e6-tts" nil ".wav")))
-    (setq e6/readback--anchor
-          (copy-marker (if region
-                           (save-excursion (goto-char (region-end))
-                                           (line-beginning-position 2))
-                         (cdr bounds))))
-    (if (string-empty-p text)
-        (message "Nothing to read here.")
-      (e6/readback--synth text wav)
-      (e6/readback--play-file wav)
-      (message "Reading (%s, %.2fx)…  <f8> comment  <f9> stop"
-               e6/readback-language e6/readback-speed))))
+  (e6/readback-stop)
+  (setq e6/readback--playing t
+        e6/readback--pos 0)
+  (if (use-region-p)
+      (setq e6/readback--units
+            (list (list :beg (region-beginning)
+                        :end (copy-marker (save-excursion
+                                            (goto-char (region-end))
+                                            (line-beginning-position 2)))
+                        :text (string-trim (buffer-substring-no-properties
+                                            (region-beginning) (region-end)))
+                        :wav nil :state 'pending)))
+    (setq e6/readback--units (e6/readback--build-queue)))
+  (if (null e6/readback--units)
+      (progn (setq e6/readback--playing nil) (message "Nothing to read."))
+    (when (eq e6/readback-tts-engine 'pocket) (e6/readback--start-tts-server))
+    (message "Reading %d block(s) (%s, %.2fx)…  <f8> comment  <f9> stop"
+             (length e6/readback--units) e6/readback-language e6/readback-speed)
+    (e6/readback--play-unit)))
 
 (defun e6/readback-stop ()
-  "Stop playback."
+  "Stop the read-through."
   (interactive)
+  (setq e6/readback--playing nil)
   (when (process-live-p e6/readback--play-proc)
+    (set-process-sentinel e6/readback--play-proc #'ignore)
     (delete-process e6/readback--play-proc)))
 
 (defun e6/readback-toggle-language ()
@@ -970,7 +1074,9 @@ with no manual venv). Other options:
         (message "No transcript (is the model loaded? see *e6-stt*).")
       (e6/readback--insert-comment text)
       (message "Comment added: %s" text)))
-  (ignore-errors (delete-file e6/readback--rec-file)))
+  (ignore-errors (delete-file e6/readback--rec-file))
+  ;; Resume reading from where it was paused.
+  (e6/readback--pause nil))
 
 (defvar e6/readback-mode-map
   (let ((m (make-sparse-keymap)))

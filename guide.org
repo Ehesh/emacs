@@ -145,12 +145,14 @@ export dispatcher for the built-in backends.
 :CUSTOM_ID: readback
 :END:
 
-A review workflow: Emacs reads a paragraph aloud (pocket-tts), you pause and
-*speak a comment*, it's transcribed (Parakeet v3) and dropped in as an Org
-=#= comment under that paragraph. Those comments don't export to Word, but you
-can review them or feed the file to an LLM. Enable it on an =.org= file with
-=SPC t R= (or =M-x e6/readback-mode=); enabling loads the speech models, and
-disabling frees them.
+A review workflow: Emacs reads *continuously from the current paragraph to the
+end of the section* (pocket-tts), synthesizing the next paragraphs in the
+background so it doesn't pause between them. Any time, pause and *speak a
+comment*: it's transcribed (Parakeet v3) and dropped in as an Org =#= comment
+under the paragraph being read *at that moment*, then reading resumes where it
+paused. Those comments don't export to Word, but you can review them or feed the
+file to an LLM. Enable it on an =.org= file with =SPC t R= (or
+=M-x e6/readback-mode=); enabling loads the speech models, disabling frees them.
 
 ** Controls (while the mode is on)
 :PROPERTIES:
@@ -159,8 +161,8 @@ disabling frees them.
 
 | Key         | Action                                                        |
 |-------------+---------------------------------------------------------------|
-| =<f7>=      | Read the current paragraph (or the region) aloud             |
-| =<f8>=      | Dictate a comment: press once to *pause + record*, press again to *stop + insert* |
+| =<f7>=      | Read from the current paragraph to the end of the section (or the region) |
+| =<f8>=      | Dictate a comment: once = *pause + record*, again = *stop + insert + resume* |
 | =<f9>=      | Stop reading                                                  |
 | =<f6>=      | Switch language English ⇄ Spanish (restarts the voice model) |
 | =<f10>=     | Slower                                                        |
