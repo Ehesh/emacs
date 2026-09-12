@@ -1259,8 +1259,11 @@ insert) · =<f9>= stop reading. Multiple comments on one paragraph stack below
 each other.
 
 *Requirements (Linux):* =piper= + voice models, =mpv= (pause/resume playback),
-=arecord= (or set your own recorder), =python3= with =nemo_toolkit[asr]= (the
-server is =scripts/parakeet_server.py=), and =curl=.
+=arecord= (or set your own recorder), a Python with =nemo_toolkit[asr]= for the
+server (=scripts/parakeet_server.py=; =scripts/requirements.txt= lists deps),
+and =curl=. Install via *uv* (preferred) or pipx — see the README's
+"Read-aloud & dictation" section. The server launcher is =e6/readback-server-command=
+(supports =uv run=, a uv/venv Python, or plain =python3=).
 
 ** Settings
 :PROPERTIES:
@@ -1283,8 +1286,13 @@ server is =scripts/parakeet_server.py=), and =curl=.
   :type 'string :group 'e6-readback)
 (defcustom e6/readback-mpv-socket "/tmp/e6-readback-mpv.sock"
   "Unix socket for mpv IPC." :type 'string :group 'e6-readback)
-(defcustom e6/readback-python "python3"
-  "Python used to run the Parakeet server." :type 'string :group 'e6-readback)
+(defcustom e6/readback-server-command '("python3")
+  "Command (list) that launches the Parakeet server; the script path is appended.
+Pick whichever Python toolchain you use. Examples:
+  (\"python3\")                                  ; a Python with nemo installed
+  (\"/home/you/.venvs/parakeet/bin/python\")     ; a uv- or venv-managed Python
+  (\"uv\" \"run\" \"--with\" \"nemo_toolkit[asr]\" \"python\") ; uv, ephemeral env"
+  :type '(repeat string) :group 'e6-readback)
 (defcustom e6/readback-stt-port 8123
   "Localhost port for the Parakeet server." :type 'integer :group 'e6-readback)
 (defcustom e6/readback-record-command
@@ -1432,7 +1440,8 @@ compute an insert point that skips past existing comments so new ones stack.
            (cons (format "E6_STT_PORT=%d" e6/readback-stt-port) process-environment))
           (script (expand-file-name "scripts/parakeet_server.py" e6/config-directory)))
       (setq e6/readback--stt-proc
-            (start-process "e6-stt" "*e6-stt*" e6/readback-python script))
+            (apply #'start-process "e6-stt" "*e6-stt*"
+                   (append e6/readback-server-command (list script))))
       (message "readback: loading Parakeet model in *e6-stt* (first use may wait)…"))))
 
 (defun e6/readback--transcribe (wav)

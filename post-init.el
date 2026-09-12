@@ -629,8 +629,13 @@ REPLACE the region/buffer in place."
   :type 'string :group 'e6-readback)
 (defcustom e6/readback-mpv-socket "/tmp/e6-readback-mpv.sock"
   "Unix socket for mpv IPC." :type 'string :group 'e6-readback)
-(defcustom e6/readback-python "python3"
-  "Python used to run the Parakeet server." :type 'string :group 'e6-readback)
+(defcustom e6/readback-server-command '("python3")
+  "Command (list) that launches the Parakeet server; the script path is appended.
+Pick whichever Python toolchain you use. Examples:
+  (\"python3\")                                  ; a Python with nemo installed
+  (\"/home/you/.venvs/parakeet/bin/python\")     ; a uv- or venv-managed Python
+  (\"uv\" \"run\" \"--with\" \"nemo_toolkit[asr]\" \"python\") ; uv, ephemeral env"
+  :type '(repeat string) :group 'e6-readback)
 (defcustom e6/readback-stt-port 8123
   "Localhost port for the Parakeet server." :type 'integer :group 'e6-readback)
 (defcustom e6/readback-record-command
@@ -754,7 +759,8 @@ REPLACE the region/buffer in place."
            (cons (format "E6_STT_PORT=%d" e6/readback-stt-port) process-environment))
           (script (expand-file-name "scripts/parakeet_server.py" e6/config-directory)))
       (setq e6/readback--stt-proc
-            (start-process "e6-stt" "*e6-stt*" e6/readback-python script))
+            (apply #'start-process "e6-stt" "*e6-stt*"
+                   (append e6/readback-server-command (list script))))
       (message "readback: loading Parakeet model in *e6-stt* (first use may wait)…"))))
 
 (defun e6/readback--transcribe (wav)

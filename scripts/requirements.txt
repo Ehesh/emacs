@@ -1,0 +1,3 @@
+# Parakeet v3 STT server (scripts/parakeet_server.py) dependencies.
+# Pulls in torch and friends; expect a large download on first install.
+nemo_toolkit[asr]

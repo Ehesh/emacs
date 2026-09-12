@@ -44,6 +44,48 @@ This is a single config synced across machines via git.
   programs (Quarto, himalaya, etc.); those are platform-guarded and documented
   in `Config.org` as they're added.
 
+## Read-aloud & dictation (Linux only)
+
+`e6/readback-mode` (toggle with `SPC t R`) reads paragraphs aloud (Piper) and
+lets you dictate spoken comments that Parakeet v3 transcribes into Org `# …`
+comment lines. Models load only while the mode is on. In-mode keys: `<f7>` read,
+`<f8>` dictate (press once to pause+record, again to stop+insert), `<f9>` stop,
+`<f6>` switch English/Spanish. Multiple comments on one paragraph stack.
+
+**Setup with uv (preferred):**
+
+```bash
+# TTS + player + recorder (system packages)
+sudo apt install mpv alsa-utils curl        # arecord is in alsa-utils
+
+# Piper TTS as a uv tool
+uv tool install piper-tts                    # provides the `piper` binary
+
+# Piper voices -> ~/.local/share/piper/  (download .onnx + .onnx.json)
+mkdir -p ~/.local/share/piper
+# e.g. en_US-lessac-medium and es_ES-davefx-medium from the Piper voices repo
+
+# Parakeet STT server env (heavy: pulls torch)
+uv venv ~/.venvs/parakeet
+uv pip install --python ~/.venvs/parakeet -r scripts/requirements.txt
+```
+
+Then point the server launcher at that env — `M-x customize-variable RET
+e6/readback-server-command` (or edit the *Settings* block in `Config.org`):
+
+```elisp
+;; use the uv-managed venv Python:
+(setq e6/readback-server-command '("/home/YOU/.venvs/parakeet/bin/python"))
+;; or run ephemerally without a venv:
+(setq e6/readback-server-command '("uv" "run" "--with" "nemo_toolkit[asr]" "python"))
+```
+
+Set your voice paths if they differ (`e6/readback-piper-voice-en` / `-es`).
+
+**Alternative with pipx / pip:** `pipx install piper-tts`, and
+`pip install -U "nemo_toolkit[asr]"` into a Python that
+`e6/readback-server-command` (default `("python3")`) resolves to.
+
 ## Updating the minimal-emacs.d base
 
 `init.el` and `early-init.el` are upstream files. To update them, re-copy the
