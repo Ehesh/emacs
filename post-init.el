@@ -100,5 +100,168 @@
   (diminish 'visual-line-mode)
   (with-eval-after-load 'autorevert (diminish 'auto-revert-mode)))
 
+(use-package meow
+  :demand t
+  :init
+  (setq meow-use-clipboard t)
+  :config
+  (defun meow-setup ()
+    (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
+    ;; Motion state — special/read-only buffers (Dired, Help, ...)
+    (meow-motion-overwrite-define-key
+     '("j" . meow-next)
+     '("k" . meow-prev)
+     '("<escape>" . ignore))
+    ;; Normal state — the editing keymap
+    (meow-normal-define-key
+     '("0" . meow-expand-0) '("9" . meow-expand-9) '("8" . meow-expand-8)
+     '("7" . meow-expand-7) '("6" . meow-expand-6) '("5" . meow-expand-5)
+     '("4" . meow-expand-4) '("3" . meow-expand-3) '("2" . meow-expand-2)
+     '("1" . meow-expand-1) '("-" . negative-argument) '(";" . meow-reverse)
+     '("," . meow-inner-of-thing) '("." . meow-bounds-of-thing)
+     '("[" . meow-beginning-of-thing) '("]" . meow-end-of-thing)
+     '("a" . meow-append) '("A" . meow-open-below)
+     '("b" . meow-back-word) '("B" . meow-back-symbol)
+     '("c" . meow-change) '("d" . meow-delete) '("D" . meow-backward-delete)
+     '("e" . meow-next-word) '("E" . meow-next-symbol)
+     '("f" . meow-find) '("g" . meow-cancel) '("G" . meow-grab)
+     '("h" . meow-left) '("H" . meow-left-expand)
+     '("i" . meow-insert) '("I" . meow-open-above)
+     '("j" . meow-next) '("J" . meow-next-expand)
+     '("k" . meow-prev) '("K" . meow-prev-expand)
+     '("l" . meow-right) '("L" . meow-right-expand)
+     '("m" . meow-join) '("n" . meow-search)
+     '("o" . meow-block) '("O" . meow-to-block)
+     '("p" . meow-yank) '("q" . meow-quit)
+     '("r" . meow-replace) '("R" . meow-swap)
+     '("s" . meow-kill) '("t" . meow-till) '("u" . meow-undo)
+     '("U" . meow-undo-in-selection) '("v" . meow-visit)
+     '("w" . meow-next-word) '("W" . meow-next-symbol)
+     '("x" . meow-line) '("y" . meow-save) '("z" . meow-pop-selection)
+     '("'" . repeat) '("<escape>" . ignore)))
+  (meow-setup)
+  (meow-global-mode 1))
+
+(use-package magit
+  :bind ("C-x g" . magit-status)
+  :commands (magit-status magit-dispatch magit-file-dispatch magit-log-current magit-blame))
+
+(defcustom e6/ai-cli-command ""
+  "Default external CLI for `e6/pipe-to-ai'. It receives text on stdin.
+For example \"llm\" or \"claude -p\". Leave empty to be prompted each time."
+  :type 'string
+  :group 'e6)
+
+(defun e6/pipe-to-ai (beg end &optional replace)
+  "Pipe the region (BEG END), or the whole buffer, to a CLI agent.
+Without a prefix arg, show the output in *AI Output*; with a prefix arg
+REPLACE the region/buffer in place."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end) current-prefix-arg)
+     (list (point-min) (point-max) current-prefix-arg)))
+  (let ((cmd (read-shell-command "Pipe to: " e6/ai-cli-command)))
+    (if replace
+        (shell-command-on-region beg end cmd nil t)
+      (shell-command-on-region beg end cmd "*AI Output*")
+      (with-current-buffer "*AI Output*"
+        (view-mode 1))
+      (display-buffer "*AI Output*"))))
+
+(defun e6/toggle-theme ()
+  "Toggle between `nano-dark' and `nano-light'."
+  (interactive)
+  (if (custom-theme-enabled-p 'nano-dark)
+      (progn (disable-theme 'nano-dark) (load-theme 'nano-light :no-confirm))
+    (disable-theme 'nano-light)
+    (load-theme 'nano-dark :no-confirm)))
+
+(require 'transient)
+
+(transient-define-prefix e6/buffers-menu ()
+  "Buffers."
+  [["Switch"
+    ("b" "Switch buffer" switch-to-buffer)
+    ("n" "Next"          next-buffer :transient t)
+    ("p" "Previous"      previous-buffer :transient t)]
+   ["Manage"
+    ("k" "Kill"    kill-current-buffer)
+    ("s" "Save"    basic-save-buffer)
+    ("r" "Revert"  revert-buffer)
+    ("R" "Rename"  rename-buffer)]
+   ["List"
+    ("l" "Ibuffer" ibuffer)
+    ("i" "Imenu"   imenu)]])
+
+(transient-define-prefix e6/files-menu ()
+  "Files."
+  [["Open"
+    ("f" "Find file"   find-file)
+    ("r" "Recent file" recentf-open-files)
+    ("d" "Dired"       dired)]
+   ["Save"
+    ("s" "Save"        save-buffer)
+    ("S" "Save as"     write-file)]])
+
+(transient-define-prefix e6/windows-menu ()
+  "Windows."
+  [["Split"
+    ("s" "Below" split-window-below)
+    ("v" "Right" split-window-right)]
+   ["Move / Remove"
+    ("o" "Other"   other-window :transient t)
+    ("d" "Delete"  delete-window)
+    ("m" "Maximize" delete-other-windows)
+    ("=" "Balance" balance-windows)]])
+
+(transient-define-prefix e6/git-menu ()
+  "Git (Magit)."
+  [["Magit"
+    ("g" "Status"        magit-status)
+    ("d" "Dispatch"      magit-dispatch)
+    ("F" "File dispatch" magit-file-dispatch)]
+   ["Inspect"
+    ("l" "Log"   magit-log-current)
+    ("b" "Blame" magit-blame)]])
+
+(transient-define-prefix e6/toggle-menu ()
+  "Toggles."
+  [["Display"
+    ("l" "Line numbers"   display-line-numbers-mode)
+    ("w" "Soft wrap"      visual-line-mode)
+    ("t" "Truncate lines" toggle-truncate-lines)
+    ("f" "Fill column"    display-fill-column-indicator-mode)]
+   ["Look"
+    ("m" "Mixed pitch"    mixed-pitch-mode)
+    ("T" "Dark/light"     e6/toggle-theme)]])
+
+(transient-define-prefix e6/help-menu ()
+  "Help."
+  [["Describe"
+    ("f" "Function" describe-function)
+    ("v" "Variable" describe-variable)
+    ("k" "Key"      describe-key)
+    ("m" "Mode"     describe-mode)]
+   ["Search"
+    ("a" "Apropos"  apropos-command)
+    ("i" "Info"     info)]])
+
+(with-eval-after-load 'meow
+  (meow-leader-define-key
+   ;; Quick access
+   '("SPC" . execute-extended-command)
+   '("."   . find-file)
+   '(","   . switch-to-buffer)
+   '("TAB" . comment-line)
+   '("u"   . universal-argument)
+   '("|"   . e6/pipe-to-ai)
+   ;; Menus
+   '("b"   . e6/buffers-menu)
+   '("f"   . e6/files-menu)
+   '("g"   . e6/git-menu)
+   '("h"   . e6/help-menu)
+   '("t"   . e6/toggle-menu)
+   '("w"   . e6/windows-menu)))
+
 (provide 'post-init)
 ;;; post-init.el ends here
