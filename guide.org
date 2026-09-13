@@ -1,10 +1,9 @@
-#+TITLE: E6's Emacs — Org & Notes Starter Guide
+#+TITLE: E6's Emacs — Starter Guide
 #+STARTUP: overview
 #+OPTIONS: toc:2
 
 A hands-on guide to *actually using* this Emacs. Open it any time with =SPC n G=.
-Work through it in order; do the little exercises. Everything here works in this
-config as shipped.
+Everything here works in this config as shipped.
 
 * First: how to move and type (meow)
 :PROPERTIES:
@@ -17,37 +16,45 @@ Buffers start in *NORMAL* state — letters are commands, not text.
 - Move: =h j k l= (left/down/up/right), =w=/=b= (word forward/back),
   =e= (next word), =x= (select whole line).
 - Select then act: =x= (line) then =s= (kill) or =y= (copy) or =c= (change).
-- Undo: =u=.  Search: =/= is the leader search; in normal state =n= repeats.
+- Undo: =u=.  Search: =/= (leader) then type; =n= repeats a search.
+- Save: =C-x C-s=.  Kill buffer: =SPC k= (or =SPC b k=).
 - *Panic button:* =M-x meow-global-mode= turns modal editing off entirely.
 - Full layout: =M-x meow-cheatsheet=.
-
-*Exercise:* put the cursor on this line, press =x= (selects it), then =y=
-(copies), move down, press =p= (paste).
 
 * The leader (SPC) — your command palette
 :PROPERTIES:
 :CUSTOM_ID: leader
 :END:
 
-In normal state press =SPC=, wait, and which-key shows the options.
+In NORMAL state press =SPC=, then a key. Single-action keys run immediately;
+*menu keys open a popup menu* (a "transient") listing its own sub-keys — read
+that popup and press the letter you want. (Transient popups are separate from
+which-key, which shows only the top-level =SPC= keys.)
 
-| Key       | Does                                             |
-|-----------+--------------------------------------------------|
-| =SPC SPC= | Run any command (M-x)                             |
-| =SPC .=   | Find file                                        |
-| =SPC ,=   | Switch buffer (consult)                          |
-| =SPC /=   | Search this buffer (consult-line)                |
-| =SPC c=   | Capture a note (see below)                       |
-| =SPC \vert= | Pipe region/buffer to an AI CLI                |
-| =SPC b/f/w= | Buffers / Files / Windows menus                |
-| =SPC g=   | Git (Magit)                                      |
-| =SPC l=   | Launch & convert (exports + services)            |
-| =SPC n=   | Notes menu (capture, inbox, agenda, guide, elfeed) |
-| =SPC r=   | Research menu (citations, PDF/noter, IPA, spell) |
-| =SPC m=   | Email (himalaya)                                 |
-| =SPC s=   | Search menu (line, ripgrep, grep, imenu…)        |
-| =SPC t=   | Toggles (wrap, numbers, theme, olivetti, read-aloud) |
-| =SPC h=   | Help (describe function/variable/key/mode)       |
+| Key       | Does                                                     |
+|-----------+----------------------------------------------------------|
+| =SPC SPC= | Run any command (M-x)                                     |
+| =SPC .=   | Find file                                                |
+| =SPC ,=   | Switch buffer                                            |
+| =SPC /=   | Search this buffer                                       |
+| =SPC c=   | Capture a note (menu: i/f/p/b)                           |
+| =SPC k=   | Kill current buffer                                      |
+| =SPC \vert= | Send region/buffer to your AI CLI (pi)                 |
+| =SPC p=   | *Project* commands (switch/find/grep…)                   |
+| =SPC b=   | Buffers menu (switch, *save* =s*, *kill* =k*, revert…)   |
+| =SPC f=   | Files menu (find, recent, Dirvish, save)                 |
+| =SPC g=   | Git menu → =g= opens Magit status                        |
+| =SPC l=   | Launch & convert menu (exports, marimo, services)        |
+| =SPC n=   | Notes menu (capture, inbox, agenda, sprints, guide)      |
+| =SPC r=   | Research menu (citations, PDF, IPA, spell, ling examples)|
+| =SPC m=   | Email (himalaya)                                         |
+| =SPC s=   | Search menu (line, ripgrep, grep, imenu…)                |
+| =SPC t=   | Toggles (wrap, numbers, theme, olivetti, timer, read-aloud)|
+| =SPC h=   | Help (describe function/variable/key/mode)               |
+| =SPC w=   | Windows menu (split, other, balance…)                    |
+
+So "open Magit" is =SPC g= (the git popup appears) then =g=. "Save the buffer"
+is =SPC b= then =s=, or just =C-x C-s=.
 
 * Org basics
 :PROPERTIES:
@@ -58,17 +65,18 @@ In normal state press =SPC=, wait, and which-key shows the options.
 =*=, =**=, =***= make headings. =TAB= folds/unfolds a heading;
 =S-TAB= cycles the whole document.
 
-** TODOs
-Type =* TODO Something=. Press =S-<right>/<left>= (shift-arrows) on the heading
-to cycle TODO → DONE. =C-c C-t= sets the state directly.
+** TODO states (Emotional Sprints)
+Instead of TODO/DONE, tasks are classed by how they *feel*. Type =* FIRE Thing=
+(or PLAY/BORING/APPROACH). On the heading, =C-c C-t= picks a state; or press the
+fast key: =f= FIRE, =a= APPROACH, =b= BORING, =p= PLAY, =d= DONE. See the
+Sprints workflow below.
 
 ** Links
-=C-c C-l= inserts a link (to a file, a heading, a URL). =RET= on a link follows
-it (this config sets =org-return-follows-link=).
+=C-c C-l= inserts a link; =RET= on a link follows it.
 
 ** Emphasis
-=*bold*=, =/italic/=, ==code==, =~verbatim~=. Markers are hidden until your
-cursor is on the word (org-appear) — that's normal.
+=*bold*=, =/italic/=, ==code==, =~verbatim~=. Markers hide until the cursor is on
+the word (org-appear).
 
 ** Source blocks
 Type =<s= then =TAB= (org-tempo) to expand a =#+begin_src … #+end_src= block.
@@ -78,150 +86,147 @@ Type =<s= then =TAB= (org-tempo) to expand a =#+begin_src … #+end_src= block.
 :CUSTOM_ID: capture
 :END:
 
-Press =SPC c= (or =C-c c=), pick:
-- =i= — Inbox: a quick idea → filed under *Inbox* in =inbox.org=.
-- =t= — Task: a TODO → filed under *Tasks*.
+=SPC c= (or =C-c c=), then pick — *low friction, just spit it out*:
+- =i= — Inbox: a raw idea → under *Inbox* in =inbox.org=.
+- =f= — FIRE task · =p= — PLAY task · =b= — BORING task → under *Tasks*.
 
-Type the note, then =C-c C-c= to save it (or =C-c C-k= to cancel). Your inbox
-lives in your =org/= folder (outside this config). Open it with =SPC n i=.
+Type it, =C-c C-c= to save (=C-c C-k= cancels). Don't file/tag/schedule — just
+dump and clear your screen. Open the inbox with =SPC n i=.
 
-*Exercise:* =SPC c i=, type "try org capture", =C-c C-c=. Then =SPC n i= to see it.
+* The Emotional Sprints workflow (ADHD-friendly)
+:PROPERTIES:
+:CUSTOM_ID: sprints
+:END:
 
-* Tables and glossing
+The idea: don't sort tasks by project, sort by *energy*. Then when a hard task
+(FIRE) feels impossible, downshift to a tiny PLAY/BORING win to start the
+dopamine loop.
+
+- Capture freely with =SPC c= (see above) — everything lands flat in =inbox.org=.
+- Open the *dashboard* with =SPC n s= (stacks tasks by sprint, not by clock):
+  ⚡ FIRE · 📅 APPROACH · 🎨 PLAY · 🪵 BORING.
+- Resisting the FIRE list? Jump to PLAY or BORING, find a 2-minute task, and hit
+  =d= (mark DONE) for instant feedback. Then move up.
+
+Start a Pomodoro on whatever you pick: =SPC t p= → =p= (25 min work / 5 break).
+
+* Tables, glossing & linguistic examples
 :PROPERTIES:
 :CUSTOM_ID: tables
 :END:
 
-Start a table by typing a header line with pipes and pressing =TAB=:
+Start a table with a header row of pipes and press =TAB=:
 
 : | Form | Gloss | Notes |
 : |------+-------+-------|
 
-=TAB= moves to the next cell (creating rows as needed); =|-= then =TAB= draws a
-rule. Columns stay pixel-aligned even in the prose font (valign) — good for
-interlinear examples. Toggle valign with =M-x valign-mode= if a huge table lags.
+=TAB= moves cell to cell (adding rows); =|-= then =TAB= draws a rule. Columns are
+pixel-aligned by valign; toggle with =M-x valign-mode= if a huge table lags.
+
+For *pandoc-ling* interlinear examples (in Markdown/QMD), use =SPC r l=:
+- =e= a numbered example · =i= a 4-line interlinear (header/source/gloss/free) ·
+  =l= a labeled example · =r= a cross-reference =[@label]=.
+To render them, set =e6/pandoc-ling-filter= to your =pandoc-ling.lua= (see the
+README), then export.
 
 * Assembling notes by reference (transclusion)
 :PROPERTIES:
 :CUSTOM_ID: transclusion
 :END:
 
-To pull the live content of another file/heading into the current document, add
-a line like:
+Add a line like:
 
 : #+transclude: [[file:chapter1.org::*Method]]
 
-Then =SPC n t= (=org-transclusion-add=) to render it, or =SPC n T= to toggle the
-whole buffer. Edits stay in the source file — great for stitching a thesis from
-section files without copy-paste.
+then =SPC n t= to render it (=SPC n T= toggles the whole buffer). Edits stay in
+the source file — good for stitching a thesis from section files.
 
-* Images
+* Images & feeds
 :PROPERTIES:
-:CUSTOM_ID: images
+:CUSTOM_ID: media
 :END:
 
-Copy an image to the clipboard, then =SPC n d= (=org-download-clipboard=) to drop
-it into the note; the file is saved under =images/= beside your notes. You can
-also drag a file from the OS into an Org buffer.
+- *Image:* copy it, then =SPC n d= drops it in (saved under =images/= by your
+  notes). Dragging a file into the buffer also works.
+- *Feeds:* =SPC n e= opens elfeed (LINGUIST List + Language Log). =G= refresh,
+  =RET= read, =s= filter.
 
-* Reading — feeds
-:PROPERTIES:
-:CUSTOM_ID: feeds
-:END:
-
-=SPC n e= opens elfeed (linguistics feeds — LINGUIST List calls, jobs, journals,
-Language Log). =G= refreshes, =RET= reads an entry, =s= filters. Edit the feed
-list in the *elfeed* block of =Config.org=.
-
-* Export (later)
-:PROPERTIES:
-:CUSTOM_ID: export
-:END:
-
-Export tooling (Quarto, Typst) is a later pass. For now, =C-c C-e= opens Org's
-export dispatcher for the built-in backends.
-
-* Read-aloud & dictation (Linux)
-:PROPERTIES:
-:CUSTOM_ID: readback
-:END:
-
-A review workflow: Emacs reads *continuously from the current paragraph to the
-end of the section* (pocket-tts), synthesizing the next paragraphs in the
-background so it doesn't pause between them. Any time, pause and *speak a
-comment*: it's transcribed (Parakeet v3) and dropped in as an Org =#= comment
-under the paragraph being read *at that moment*, then reading resumes where it
-paused. Those comments don't export to Word, but you can review them or feed the
-file to an LLM. Enable it on an =.org= file with =SPC t R= (or
-=M-x e6/readback-mode=); enabling loads the speech models, disabling frees them.
-
-** Controls (while the mode is on)
-:PROPERTIES:
-:CUSTOM_ID: readback-controls
-:END:
-
-| Key         | Action                                                        |
-|-------------+---------------------------------------------------------------|
-| =<f7>=      | Read from the current paragraph to the end of the section (or the region) |
-| =<f8>=      | Dictate a comment: once = *pause + record*, again = *stop + insert + resume* |
-| =<f9>=      | Stop reading                                                  |
-| =<f6>=      | Switch language English ⇄ Spanish (restarts the voice model) |
-| =<f10>=     | Slower                                                        |
-| =<f12>=     | Faster                                                        |
-| =M-<f12>=   | Reset speed to 1.0×                                           |
-
-*Playback speed* changes take effect immediately on the current reading and are
-remembered for the next paragraph (range 0.5×–3.0×, steps of 0.1). The current
-speed is shown when you start reading.
-
-*Comments stack:* a second dictated note on the same paragraph is added *below*
-the first, not on top of it. Reading a paragraph skips any =#= comments already
-under it.
-
-** Tips
-:PROPERTIES:
-:CUSTOM_ID: readback-tips
-:END:
-
-- Keep point in the paragraph you're reviewing; comments anchor to the paragraph
-  that was read.
-- Spanish uses pocket-tts's =lola= voice via the higher-quality =spanish_24l=
-  model; English defaults to =alba=. Change voices in the *Settings* block of
-  =Config.org= (=e6/readback-pocket-voice-en/-es=).
-- Requires (Linux): =pocket-tts= (via uv), =mpv=, =arecord=, and the Parakeet
-  server deps — see the README's "Read-aloud & dictation" section.
-
-* Tools, conversions & services
+* Converting & running things
 :PROPERTIES:
 :CUSTOM_ID: tools
 :END:
 
 =SPC l= opens the launch/convert menu.
 
-- *Convert the current file:* =w= → Word, =h= → HTML, =p= → PDF (all via Quarto,
-  which works from Org/Markdown/QMD); =t= compiles a =.typ= with Typst.
-- *Services (=SPC l s=, prodigy):* start/stop long-running things and *see what's
-  running* — ships with *marimo* (=uvx marimo edit=) and *BentoPDF* (a podman
-  container). In the list: =s= start, =S= stop, =r= restart, =b= open its URL.
-- *Forgot what you left running?* =SPC l s= shows every service's status, and
-  =SPC l P= (=list-processes=) shows all Emacs child processes. Everything you
-  launch this way is owned by Emacs, so quitting Emacs stops it too.
+- *Convert the current file:* =w= → Word, =h= → HTML, =p= → PDF. Org/Markdown go
+  through *pandoc* (PDF via Typst — no LaTeX needed); =.qmd= goes through
+  *Quarto*. =t= compiles a =.typ= file with Typst directly.
+- *marimo:* =SPC l m= launches a marimo notebook *in a directory you pick, using
+  that directory's uv environment* (=uv run marimo edit=). It runs as an Emacs
+  child (see =SPC l P=), so quitting Emacs stops it.
+- *Services:* =SPC l s= opens *prodigy* — start/stop/see status of long-running
+  services (marimo on :2718, BentoPDF on :3000). =s= start, =S= stop, =r=
+  restart, =b= open its URL (shown in the name).
+- *What did I leave running?* =SPC l s= (services) and =SPC l P=
+  (=list-processes=, all Emacs child processes). Everything launched this way
+  dies when Emacs quits.
 
-*Linting:* open a Markdown/YAML/TOML/Lua/Typst/Rust/Python file and you get
-diagnostics automatically *if* the matching language server is installed (see the
-README for which and how). Nested brackets are colour-coded by depth in code.
+* Read-aloud & dictation (Linux)
+:PROPERTIES:
+:CUSTOM_ID: readback
+:END:
+
+Reads *continuously from the current paragraph to the end of the section*
+(pocket-tts), synthesizing ahead so it doesn't pause between paragraphs. Pause to
+*speak a comment*: it's transcribed (Parakeet v3) and inserted as an Org =#=
+comment under the paragraph being read, then reading resumes. Comments don't
+export to Word. Enable on an =.org= file with =SPC t R=; enabling loads the
+speech models, disabling frees them.
+
+** Controls (while the mode is on)
+:PROPERTIES:
+:CUSTOM_ID: readback-controls
+:END:
+
+| Key       | Action                                                          |
+|-----------+-----------------------------------------------------------------|
+| =<f5>=    | Cycle the voice (for the current language)                      |
+| =<f6>=    | Switch language English ⇄ Spanish                               |
+| =<f7>=    | Read from the current paragraph to the end of the section       |
+| =<f8>=    | Dictate: once = *pause + record*, again = *stop + insert + resume* |
+| =<f9>=    | Stop reading                                                    |
+| =<f10>= / =<f12>= | Slower / faster (0.5×–3.0×, remembered)                 |
+| =M-<f12>= | Reset speed to 1.0×                                             |
+
+Comments *stack* below any existing ones on that paragraph. Spanish uses the
+=lola= voice; English =alba= (cycle with =<f5>=; edit the lists in Config.org).
+
+* Setting up a project
+:PROPERTIES:
+:CUSTOM_ID: project-setup
+:END:
+
+A "project" lets =SPC p= find files, search, and switch within one folder.
+
+- *Easiest:* make the folder a Git repo — =cd folder && git init= (or =SPC g g=
+  in a file there, then =I= to init). It's now a project automatically.
+- *No Git?* Create an empty file named =.project= in the folder's root. This
+  config treats that as a project marker.
+- Then: =SPC p p= switch project · =SPC p f= find file in project · =SPC p g=
+  grep the project · =SPC p b= switch project buffer · =SPC p d= dired.
 
 * The config workflow (important)
 :PROPERTIES:
 :CUSTOM_ID: workflow
 :END:
 
-- All settings live in =Config.org=. Open it, edit a block, *save* — it
-  auto-tangles to =post-init.el=. Restart Emacs (or re-eval) to apply.
+- All settings live in =Config.org=. Edit a block, *save* — it auto-tangles to
+  =post-init.el=. Restart Emacs (or re-evaluate the block) to apply.
 - *Never* hand-edit the =*-init.el= files; they're generated.
-- The base (=init.el=, =early-init.el=) is minimal-emacs.d — don't edit those
-  either; customise via =Config.org=.
-- It's a git repo: =SPC g g= for Magit. Commit as you change things; pull/push
-  to sync your other machine.
+- The base (=init.el=, =early-init.el=) is minimal-emacs.d — customise via
+  =Config.org=, not those.
+- It's a git repo: =SPC g= then =g= for Magit. Commit as you go; pull/push to
+  sync your other machine. Note each machine installs its own packages, so
+  versions can differ.
 
 Happy writing.

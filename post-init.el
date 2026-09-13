@@ -45,14 +45,16 @@
 (use-package fontaine
   :if (display-graphic-p)
   :config
+  ;; 12pt body (height 120 = 12.0pt). No serif: variable-pitch also uses the
+  ;; sans/mono FiraCode so nothing turns serif. Change -variable-pitch-family to
+  ;; a sans you like (e.g. "DejaVu Sans") if you want proportional prose later.
   (setq fontaine-presets
         '((default
            :default-family "FiraCode Nerd Font"
            :default-height 120
            :fixed-pitch-family "FiraCode Nerd Font"
-           :variable-pitch-family "Gentium Plus"
-           :variable-pitch-height 1.15)))
-  ;; Persist and restore the last-used preset across sessions.
+           :variable-pitch-family "FiraCode Nerd Font"
+           :variable-pitch-height 1.0)))
   (fontaine-mode 1)
   (fontaine-set-preset (or (fontaine-restore-latest-preset) 'default)))
 
@@ -73,10 +75,11 @@
   :config
   (spacious-padding-mode 1))
 
-;; Prose gets the variable-pitch font; code/tables stay fixed-pitch.
+;; Prose in the variable-pitch font (off by default; toggle with SPC t m).
+;; Not auto-enabled: with a serif variable-pitch it hurt readability, and you
+;; prefer a single readable face. Toggle it on per buffer if you want it.
 (use-package mixed-pitch
-  :hook ((org-mode  . mixed-pitch-mode)
-         (text-mode . mixed-pitch-mode)))
+  :commands (mixed-pitch-mode))
 
 ;; Modern Org rendering.
 (use-package org-modern
@@ -121,6 +124,25 @@
          ("h"   . dirvish-history-jump)
          ("s"   . dirvish-quicksort)
          ("f"   . dirvish-file-info-menu)))
+
+(use-package project
+  :ensure nil
+  :config
+  (setq project-vc-extra-root-markers '(".project" ".projectile")))
+
+(require 'transient)
+(transient-define-prefix e6/project-menu ()
+  "Project (project.el)."
+  [["Navigate"
+    ("p" "Switch project" project-switch-project)
+    ("f" "Find file"      project-find-file)
+    ("b" "Switch buffer"  project-switch-to-buffer)
+    ("d" "Dired"          project-dired)]
+   ["Search / act"
+    ("g" "Grep"           project-find-regexp)
+    ("r" "Replace"        project-query-replace-regexp)
+    ("c" "Compile"        project-compile)
+    ("!" "Shell command"  project-shell-command)]])
 
 (use-package olivetti
   ;; Text-type buffers only (Org, Markdown/QMD derive from text-mode); code
@@ -312,7 +334,8 @@ REPLACE the region/buffer in place."
     ("o" "Olivetti margins" olivetti-mode)
     ("T" "Dark/light"     e6/toggle-theme)]
    ["Workflow"
-    ("R" "Read-aloud/dictate" e6/readback-mode)]])
+    ("R" "Read-aloud/dictate" e6/readback-mode)
+    ("p" "Pomodoro / timer"   e6/timer-menu)]])
 
 (transient-define-prefix e6/help-menu ()
   "Help."
@@ -335,8 +358,10 @@ REPLACE the region/buffer in place."
    '("TAB" . comment-line)
    '("u"   . universal-argument)
    '("c"   . org-capture)
+   '("k"   . kill-current-buffer)
    '("|"   . e6/pipe-to-ai)
    ;; Menus
+   '("p"   . e6/project-menu)
    '("b"   . e6/buffers-menu)
    '("f"   . e6/files-menu)
    '("g"   . e6/git-menu)
@@ -447,7 +472,9 @@ REPLACE the region/buffer in place."
                                 (kind-icon-reset-cache)))))
 
 (use-package cape
-  :bind ("C-c p" . cape-prefix-map)
+  ;; Not C-c p: meow's leader falls back to C-c, so C-c p would hijack SPC p
+  ;; (project). Cape's manual backends live under C-c e instead.
+  :bind ("C-c e" . cape-prefix-map)
   :init
   (add-hook 'completion-at-point-functions #'cape-dabbrev)
   (add-hook 'completion-at-point-functions #'cape-file)
@@ -496,7 +523,21 @@ REPLACE the region/buffer in place."
         org-auto-align-tags nil
         org-src-fontify-natively t
         org-src-tab-acts-natively t
-        org-edit-src-content-indentation 0))
+        org-edit-src-content-indentation 0
+        ;; ADHD "emotional sprints": tasks classed by how they FEEL, not status.
+        org-todo-keywords
+        '((sequence "FIRE(f!)"     ; urgent, high consequence
+                    "APPROACH(a)"  ; deadline closing in
+                    "BORING(b)"    ; high-friction admin
+                    "PLAY(p)"      ; fun, low-friction dopamine
+                    "|" "DONE(d!)"))
+        ;; Dashboard stacked by energy, not a time grid (org-agenda, then "s").
+        org-agenda-custom-commands
+        '(("s" "Emotional Sprints Dashboard"
+           ((todo "FIRE"     ((org-agenda-overriding-header "⚡ SPRINT 1 · HOT FIRE (do today)")))
+            (todo "APPROACH" ((org-agenda-overriding-header "📅 SPRINT 2 · DEADLINES APPROACHING")))
+            (todo "PLAY"     ((org-agenda-overriding-header "🎨 SPRINT 4 · PLAYGROUND (low-friction wins)")))
+            (todo "BORING"   ((org-agenda-overriding-header "🪵 SPRINT 3 · BRAIN-DEAD ADMIN"))))))))
 
 ;; Make sure the inbox exists with the target headings.
 (let ((inbox (expand-file-name "inbox.org" e6/notes-directory)))
@@ -505,15 +546,43 @@ REPLACE the region/buffer in place."
       (insert "#+TITLE: Inbox\n#+STARTUP: overview\n\n* Inbox\n\n* Tasks\n"))))
 
 (with-eval-after-load 'org
+  ;; Low-friction: just spit it out — no drawers, tags or scheduling.
   (setq org-capture-templates
-        '(("i" "Inbox — fleeting idea" entry
+        '(("i" "Inbox — just dump it" entry
            (file+headline org-default-notes-file "Inbox")
-           "* %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n" :empty-lines 1)
-          ("t" "Task" entry
+           "* %?\n" :empty-lines 1)
+          ("f" "FIRE (urgent)" entry
            (file+headline org-default-notes-file "Tasks")
-           "* TODO %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n" :empty-lines 1))))
+           "* FIRE %?\n" :empty-lines 1)
+          ("p" "PLAY (fun / low-friction)" entry
+           (file+headline org-default-notes-file "Tasks")
+           "* PLAY %?\n" :empty-lines 1)
+          ("b" "BORING (admin)" entry
+           (file+headline org-default-notes-file "Tasks")
+           "* BORING %?\n" :empty-lines 1))))
 
 (keymap-global-set "C-c c" #'org-capture)
+
+(use-package org-pomodoro
+  :commands (org-pomodoro)
+  :custom
+  (org-pomodoro-length 25)
+  (org-pomodoro-short-break-length 5)
+  (org-pomodoro-long-break-length 15)
+  (org-pomodoro-manual-break t))
+
+(transient-define-prefix e6/timer-menu ()
+  "Timers."
+  [["Pomodoro (25/5)"
+    ("p" "Start (on task)"   org-pomodoro)
+    ("k" "Stop"              org-pomodoro-kill)]
+   ["Countdown timer"
+    ("s" "Set countdown"     org-timer-set-timer)
+    ("SPC" "Pause / resume"  org-timer-pause-or-continue)
+    ("x" "Stop"              org-timer-stop)]
+   ["Relative timer"
+    ("r" "Start / reset"     org-timer-start)
+    ("i" "Insert time"       org-timer)]])
 
 (use-package toc-org
   :hook (org-mode . toc-org-enable))
@@ -569,12 +638,18 @@ REPLACE the region/buffer in place."
   (interactive)
   (find-file (expand-file-name "inbox.org" e6/notes-directory)))
 
+(defun e6/sprints-dashboard ()
+  "Open the Emotional Sprints agenda dashboard."
+  (interactive)
+  (org-agenda nil "s"))
+
 (transient-define-prefix e6/notes-menu ()
   "Notes & research."
   [["Capture / open"
     ("c" "Capture"     org-capture)
     ("i" "Inbox"       e6/open-inbox)
     ("a" "Agenda"      org-agenda)
+    ("s" "Sprints board" e6/sprints-dashboard)
     ("G" "Guide"       e6/open-guide)]
    ["Transclude"
     ("t" "Add here"    org-transclusion-add)
@@ -595,7 +670,9 @@ REPLACE the region/buffer in place."
   (org-cite-insert-processor 'citar)
   (org-cite-follow-processor 'citar)
   (org-cite-activate-processor 'citar)
-  :bind ("C-c b" . citar-insert-citation))
+  ;; Not C-c b: that would hijack the leader's SPC b (buffers). Use C-c i
+  ;; (insert citation); SPC r c also inserts a citation.
+  :bind ("C-c i" . citar-insert-citation))
 
 (use-package citar-embark
   :after (citar embark)
@@ -660,7 +737,9 @@ REPLACE the region/buffer in place."
     ("v" "Open PDF/file"   find-file)]
    ["Input / spell"
     ("i" "Toggle IPA"      toggle-input-method)
-    ("s" "Correct word"    e6/spell-correct)]])
+    ("s" "Correct word"    e6/spell-correct)]
+   ["Linguistics"
+    ("l" "Ling examples"   e6/ling-menu)]])
 
 (when (executable-find "uv")
   (with-eval-after-load 'ob-python
@@ -706,17 +785,37 @@ REPLACE the region/buffer in place."
 (with-eval-after-load 'eglot
   (setq eglot-autoshutdown t))
 
-(defun e6/quarto-render (fmt)
-  "Render the current file to FMT with quarto."
+(defcustom e6/pandoc-ling-filter ""
+  "Path to pandoc-ling.lua. When set, it's added to pandoc exports
+so linguistic examples render. See https://github.com/cysouw/pandoc-ling."
+  :type 'string :group 'e6)
+
+(defun e6/export-current (target)
+  "Export the current file to TARGET (\"docx\", \"html\", or \"pdf\").
+Uses quarto for .qmd (code execution); pandoc for Org/Markdown/etc.
+PDF goes through Typst (no LaTeX needed). pandoc-ling filter added if set."
   (let ((f (buffer-file-name)))
     (unless f (user-error "Buffer has no file"))
-    (async-shell-command
-     (format "quarto render %s --to %s" (shell-quote-argument f) fmt)
-     (format "*quarto:%s*" fmt))))
+    (let* ((ext (downcase (or (file-name-extension f) "")))
+           (out (concat (file-name-sans-extension f) "." target))
+           (ling (if (and e6/pandoc-ling-filter
+                          (not (string-empty-p e6/pandoc-ling-filter)))
+                     (format " --lua-filter %s"
+                             (shell-quote-argument e6/pandoc-ling-filter))
+                   ""))
+           (cmd (if (string= ext "qmd")
+                    (format "quarto render %s --to %s"
+                            (shell-quote-argument f) target)
+                  (format "pandoc %s -o %s%s%s"
+                          (shell-quote-argument f)
+                          (shell-quote-argument out)
+                          (if (string= target "pdf") " --pdf-engine=typst" "")
+                          ling))))
+      (async-shell-command cmd (format "*export:%s*" target)))))
 
-(defun e6/export-docx () (interactive) (e6/quarto-render "docx"))
-(defun e6/export-html () (interactive) (e6/quarto-render "html"))
-(defun e6/export-pdf  () (interactive) (e6/quarto-render "typst")) ; PDF via Typst
+(defun e6/export-docx () (interactive) (e6/export-current "docx"))
+(defun e6/export-html () (interactive) (e6/export-current "html"))
+(defun e6/export-pdf  () (interactive) (e6/export-current "pdf"))
 
 (defun e6/typst-compile ()
   "Compile the current .typ file to PDF with typst."
@@ -726,36 +825,86 @@ REPLACE the region/buffer in place."
     (async-shell-command
      (format "typst compile %s" (shell-quote-argument f)) "*typst*")))
 
+(defun e6/ling-example ()
+  "Insert a pandoc-ling numbered example; point lands in the body."
+  (interactive)
+  (insert "::: ex\n")
+  (let ((p (point))) (insert "\n:::\n") (goto-char p)))
+
+(defun e6/ling-example-labeled (label)
+  "Insert a labeled pandoc-ling example (referable with [@LABEL])."
+  (interactive "sExample label (for [@label]): ")
+  (insert (format "::: {#%s .ex}\n" label))
+  (let ((p (point))) (insert "\n:::\n") (goto-char p)))
+
+(defun e6/ling-interlinear ()
+  "Insert a 4-line interlinear block (header/source/gloss/translation)."
+  (interactive)
+  (insert "::: ex\n| ")
+  (let ((p (point))) (insert "\n| \n| \n| \n:::\n") (goto-char p)))
+
+(defun e6/ling-ref (label)
+  "Insert a pandoc-ling cross-reference [@LABEL]."
+  (interactive "sReference label: ")
+  (insert (format "[@%s]" label)))
+
+(transient-define-prefix e6/ling-menu ()
+  "Linguistic examples (pandoc-ling)."
+  [["Insert"
+    ("e" "Example"          e6/ling-example)
+    ("i" "Interlinear (4)"  e6/ling-interlinear)
+    ("l" "Labeled example"  e6/ling-example-labeled)
+    ("r" "Cross-ref [@…]"   e6/ling-ref)]])
+
 (use-package prodigy
   :commands (prodigy)
   :config
+  ;; The URL is put in the name so it's visible in the prodigy list; press `b'
+  ;; on a running service to open it.
   (prodigy-define-service
-    :name "marimo (uvx)"
-    :command "uvx"
-    :args '("marimo" "edit" "--headless")
+    :name "marimo  ·  http://localhost:2718"
+    ;; `uv run' forwards signals to its child, so stopping the service actually
+    ;; stops marimo (uvx did not); --with pulls marimo into an ephemeral env.
+    :command "uv"
+    :args '("run" "--with" "marimo" "marimo" "edit" "--headless" "--port" "2718")
     :cwd "~/"
     :url "http://localhost:2718"
     :stop-signal 'sigint
     :kill-process-buffer-on-stop t)
   (prodigy-define-service
-    :name "BentoPDF (podman)"
+    :name "BentoPDF  ·  http://localhost:3000"
     :command "podman"
-    ;; No -d: prodigy owns the container, so stopping the service stops it
-    ;; and it can't linger forgotten.
-    :args '("run" "--rm" "--name" "bentopdf" "-p" "3000:8080"
+    ;; --replace clears a leftover container of the same name; no -d so prodigy
+    ;; owns it and stopping the service stops the container.
+    :args '("run" "--replace" "--rm" "--name" "bentopdf" "-p" "3000:8080"
             "ghcr.io/alam00000/bentopdf-simple:latest")
     :url "http://localhost:3000"
     :stop-signal 'sigterm
     :kill-process-buffer-on-stop t))
 
+(defun e6/marimo-here (dir)
+  "Launch `marimo edit' in DIR using that directory's own uv environment.
+Runs as an Emacs child process, so it stops when Emacs quits and shows in
+`list-processes' (where you can also kill it)."
+  (interactive
+   (list (read-directory-name
+          "Marimo in directory: "
+          (or (and buffer-file-name (file-name-directory buffer-file-name))
+              default-directory))))
+  (let ((default-directory dir))
+    (start-process "marimo-here" "*marimo*" "uv" "run" "marimo" "edit")
+    (message "marimo starting in %s (see *marimo*; stop via M-x list-processes)"
+             dir)))
+
 (transient-define-prefix e6/launch-menu ()
   "Launch & convert."
   [["Convert current file"
-    ("w" "→ Word (quarto)"  e6/export-docx)
-    ("h" "→ HTML (quarto)"  e6/export-html)
-    ("p" "→ PDF (quarto/typst)" e6/export-pdf)
-    ("t" "Typst compile → PDF"  e6/typst-compile)]
-   ["Services (start/stop/status)"
+    ("w" "→ Word"            e6/export-docx)
+    ("h" "→ HTML"            e6/export-html)
+    ("p" "→ PDF (Typst)"     e6/export-pdf)
+    ("t" "Typst compile → PDF" e6/typst-compile)]
+   ["Run / services"
+    ("m" "marimo here (uv env)" e6/marimo-here)
     ("s" "Services (prodigy)"   prodigy)
     ("P" "Emacs processes"      list-processes)]])
 
@@ -815,6 +964,13 @@ Host/port/language/voice flags are appended automatically."
   "pocket-tts default voice for English." :type 'string :group 'e6-readback)
 (defcustom e6/readback-pocket-voice-es "lola"
   "pocket-tts default voice for Spanish." :type 'string :group 'e6-readback)
+(defcustom e6/readback-pocket-voices-en
+  '("alba" "george" "mary" "eve" "michael" "jane")
+  "English pocket-tts voices to cycle through with <f5>."
+  :type '(repeat string) :group 'e6-readback)
+(defcustom e6/readback-pocket-voices-es '("lola")
+  "Spanish pocket-tts voices to cycle through with <f5>."
+  :type '(repeat string) :group 'e6-readback)
 
 ;; --- piper (fallback engine): per-invocation synthesis ---
 (defcustom e6/readback-piper-executable "piper"
@@ -1137,6 +1293,20 @@ read just that region."
     (e6/readback--start-tts-server t))
   (message "readback language: %s" e6/readback-language))
 
+(defun e6/readback-cycle-voice ()
+  "Cycle to the next pocket-tts voice for the current language (restarts TTS)."
+  (interactive)
+  (let* ((es (eq e6/readback-language 'es))
+         (voices (if es e6/readback-pocket-voices-es e6/readback-pocket-voices-en))
+         (cur    (if es e6/readback-pocket-voice-es  e6/readback-pocket-voice-en))
+         (next   (or (cadr (member cur voices)) (car voices))))
+    (if es (setq e6/readback-pocket-voice-es next)
+      (setq e6/readback-pocket-voice-en next))
+    (when (and (bound-and-true-p e6/readback-mode)
+               (eq e6/readback-tts-engine 'pocket))
+      (e6/readback--start-tts-server t))
+    (message "readback voice (%s): %s" e6/readback-language next)))
+
 (defun e6/readback--start-server ()
   (unless (process-live-p e6/readback--stt-proc)
     (let ((process-environment
@@ -1186,6 +1356,7 @@ read just that region."
 
 (defvar e6/readback-mode-map
   (let ((m (make-sparse-keymap)))
+    (define-key m (kbd "<f5>")   #'e6/readback-cycle-voice)
     (define-key m (kbd "<f6>")   #'e6/readback-toggle-language)
     (define-key m (kbd "<f7>")   #'e6/readback-play)
     (define-key m (kbd "<f8>")   #'e6/readback-dictate-toggle)

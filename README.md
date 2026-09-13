@@ -31,15 +31,14 @@ This is a single config synced across machines via git.
   installs the packages declared in `Config.org` — this takes a minute; later
   starts are fast. Launch Emacs the normal way (Start menu / shortcut on
   Windows), not from a shell that sets `HOME`, so `~` resolves to this directory.
-- **Fonts (optional, recommended):** the config uses **FiraCode Nerd Font**
-  (monospace) and **Gentium Plus** (variable/prose). Both are guarded with
-  `find-font`, so a machine missing either one falls back gracefully instead of
-  erroring — if the font doesn't change, it isn't installed. Install them from
-  the [Nerd Fonts](https://www.nerdfonts.com/) project and
-  [SIL Gentium](https://software.sil.org/gentium/), then restart Emacs.
-  Completion-list icons additionally need **Symbols Nerd Font Mono** (run
-  `M-x nerd-icons-install-fonts`, then install the downloaded `.ttf`); until
-  then those icons stay off (guarded), and everything else works normally.
+- **Fonts:** the config uses **FiraCode Nerd Font** at 12pt for *everything*
+  (no serif). Install it from [Nerd Fonts](https://www.nerdfonts.com/); if it's
+  missing Emacs falls back to a default. Prefer proportional prose? Set
+  `variable-pitch-family` in the *Fonts — fontaine* block to a **sans** you have
+  (e.g. `DejaVu Sans`) and toggle it per buffer with `SPC t m` (mixed-pitch) —
+  it's off by default because a serif here hurt readability. Completion-list
+  icons need **Symbols Nerd Font Mono** (`M-x nerd-icons-install-fonts`, then
+  install the `.ttf`); until then those icons are off and everything else works.
 - **External tools (later passes):** some features shell out to external
   programs (Quarto, himalaya, etc.); those are platform-guarded and documented
   in `Config.org` as they're added.
@@ -81,17 +80,38 @@ For Typst syntax you also need the tree-sitter grammar:
 
 ## Launch & services
 
-`SPC l` opens a menu to **convert the current file** (Org/Markdown/QMD → Word,
-HTML, or PDF via Quarto; `.typ` → PDF via `typst`) and to open **prodigy**, which
-runs and **tracks long-running services** so you never forget one:
+`SPC l` opens a menu to **convert the current file** and run/track tools:
 
-- `SPC l s` → prodigy: `s` start, `S` stop, `r` restart, `b` open its URL. Ships
-  with **marimo** (`uvx marimo edit`) and **BentoPDF** (`podman run …`, no `-d` so
-  prodigy owns it and stopping the service stops the container).
+- **Convert:** `w` Word · `h` HTML · `p` PDF. Org/Markdown go through **pandoc**
+  (PDF via **Typst**, no LaTeX); `.qmd` goes through **Quarto**. `t` compiles a
+  `.typ` with `typst`. (Quarto can't render `.org` — that's why Org uses pandoc.)
+- **Linguistics:** if you set `e6/pandoc-ling-filter` to your `pandoc-ling.lua`,
+  pandoc exports run through it so linguistic examples number/cross-reference.
+- **marimo:** `SPC l m` launches a notebook **in a directory you choose, using
+  that directory's uv env** (`uv run marimo edit`).
+- **Services (`SPC l s`, prodigy):** `s` start, `S` stop, `r` restart, `b` open
+  its URL (shown in the service name). Ships with **marimo** (:2718, via
+  `uv run` so *stop actually stops it*) and **BentoPDF** (:3000, `podman run
+  --replace …`, no `-d`, so prodigy owns the container).
 - `SPC l P` → `list-processes` (all Emacs child processes).
 
-Anything you launch this way is an Emacs child process, so it also dies when you
-quit Emacs — no orphaned resource hogs.
+Anything launched this way is an Emacs child process, so it dies when you quit
+Emacs — no orphaned resource hogs.
+
+## Org / ADHD "emotional sprints"
+
+TODO states are by *feeling*: `FIRE` `APPROACH` `BORING` `PLAY` → `DONE`. Capture
+is low-friction (`SPC c` → `i`/`f`/`p`/`b`, just dump it). The **dashboard**
+`SPC n s` stacks tasks by sprint (⚡📅🎨🪵) instead of a clock. A **Pomodoro/timer**
+lives at `SPC t p`. Edit the keywords/dashboard in the *Org base* block.
+
+## Projects & pomodoro
+
+- **Projects (`SPC p`, project.el):** any Git repo is a project; a plain folder
+  becomes one if it has a `.project` marker file. `SPC p p` switch, `SPC p f`
+  find file, `SPC p g` grep.
+- **Pomodoro/timer (`SPC t p`):** `p` start a 25/5 Pomodoro on the current task,
+  `k` stop; plus a plain countdown with pause/resume.
 
 ## Read-aloud & dictation (Linux only)
 
