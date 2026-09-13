@@ -595,6 +595,26 @@ Flip between the nano dark and light palettes (used by the toggle menu below).
     (load-theme 'nano-dark :no-confirm)))
 #+end_src
 
+** Jump to the minibuffer
+:PROPERTIES:
+:CUSTOM_ID: minibuffer-jump
+:END:
+
+When a command is waiting on a prompt but focus wandered to another window, jump
+back to it with =C-c j= (or =SPC j=). To *cancel* a command in progress from
+anywhere, =C-]= (=abort-recursive-edit=); inside the minibuffer, =C-g=.
+
+#+begin_src emacs-lisp
+(defun e6/switch-to-minibuffer ()
+  "Select the active minibuffer window, if any."
+  (interactive)
+  (if (active-minibuffer-window)
+      (select-window (active-minibuffer-window))
+    (message "No active minibuffer")))
+
+(keymap-global-set "C-c j" #'e6/switch-to-minibuffer)
+#+end_src
+
 ** Transient menus
 :PROPERTIES:
 :CUSTOM_ID: transients
@@ -701,6 +721,7 @@ the menus are defined so meow can resolve the symbols.
    '("u"   . universal-argument)
    '("c"   . org-capture)
    '("k"   . kill-current-buffer)
+   '("j"   . e6/switch-to-minibuffer)
    '("|"   . e6/pipe-to-ai)
    ;; Menus
    '("p"   . e6/project-menu)
@@ -1792,11 +1813,12 @@ only while you're in the mode. TTS language is set per server, so switching
 language restarts pocket-tts. *Linux-only* (OS-guarded); refuses to enable
 elsewhere. Engine is =e6/readback-tts-engine= (=pocket= default, =piper= fallback).
 
-*Keys (in the mode):* =<f4>= render whole section then unload the TTS model ·
-=<f5>= cycle voice · =<f6>= language (en/es) · =<f7>= read from here to end of
-section (keeps the model hot) · =<f8>= dictate a comment (once = pause + record,
-again = stop + insert + *resume*) · =<f9>= pause/resume · =M-<f9>= stop ·
-=<f10>=/=<f12>= slower/faster · =M-<f12>= reset speed. A live header-line shows
+*Keys (in the mode):* =<f4>= render this section then unload TTS · =M-<f4>=
+render the whole file then unload · =<f5>= cycle voice · =<f6>= language (en/es) ·
+=<f7>= read from here to section end (model stays hot) · =<f8>= dictate (once =
+pause + record, again = stop + insert + *resume*) · =<f9>= pause/resume · =M-<f9>=
+stop · =<f10>=/=<f12>= previous/next paragraph · =M-<f10>=/=M-<f12>= slower/faster ·
+=C-<f12>= reset speed. A live header-line shows
 =🎙 Dictation — EN/ES=. Comments stack below existing ones and use the right
 format per file (Org =# …=, Markdown/QMD =<!-- … -->=), so they never export.
 Works in Org, Markdown and QMD (sections split on headings — Org =*=, Markdown
@@ -2105,10 +2127,12 @@ Markdown/QMD heading; else end of buffer."
       (or (and (re-search-forward "^#+[ \t]" nil t) (line-beginning-position))
           (point-max))))))
 
-(defun e6/readback--build-queue ()
-  "Collect readable units from the current paragraph to the section end."
-  (let ((start (save-excursion (backward-paragraph) (skip-chars-forward "\n") (point)))
-        (end   (e6/readback--section-end))
+(defun e6/readback--build-queue (&optional start end)
+  "Collect readable units from START to END.
+Default START is the current paragraph; default END is the section end."
+  (let ((start (or start (save-excursion (backward-paragraph)
+                                         (skip-chars-forward "\n") (point))))
+        (end   (or end (e6/readback--section-end)))
         (cre   (e6/readback--comment-re))
         (units '()))
     (save-excursion
@@ -2210,22 +2234,16 @@ read just that region."
              (length e6/readback--units) e6/readback-language e6/readback-speed)
     (e6/readback--play-unit)))
 
-(defun e6/readback-render-section ()
-  "Render the whole section to audio up front, unload the TTS model, then play.
-Two modes of use: <f7> keeps the model hot and synthesizes on demand; this one
-does it once and frees the TTS model (lighter when you only read a file once).
-Dictation/STT still works — only the speech (TTS) model is unloaded."
-  (interactive)
+(defun e6/readback--render (units)
+  "Synthesize all UNITS up front, unload the TTS model, then play from cache."
   (e6/readback-stop)
-  (setq e6/readback--units (e6/readback--build-queue)
-        e6/readback--pos 0
-        e6/readback--playing t)
-  (if (null e6/readback--units)
+  (setq e6/readback--units units e6/readback--pos 0 e6/readback--playing t)
+  (if (null units)
       (progn (setq e6/readback--playing nil) (message "Nothing to read."))
     (when (eq e6/readback-tts-engine 'pocket) (e6/readback--start-tts-server))
-    (message "Rendering %d block(s) to audio…" (length e6/readback--units))
-    (let ((remaining (length e6/readback--units)))
-      (dolist (u e6/readback--units)
+    (message "Rendering %d block(s) to audio…" (length units))
+    (let ((remaining (length units)))
+      (dolist (u units)
         (e6/readback--synth-async
          u (lambda (_u)
              (setq remaining (1- remaining))
@@ -2233,6 +2251,35 @@ Dictation/STT still works — only the speech (TTS) model is unloaded."
                (e6/readback--stop-tts-server)   ; unload the TTS model
                (message "Audio ready; TTS model unloaded. Playing…")
                (e6/readback--play-unit))))))))
+
+(defun e6/readback-render-section ()
+  "Render the current section to audio, unload the TTS model, then play (<f4>).
+<f7> instead keeps the model hot and synthesizes on demand. Dictation/STT still
+works — only the speech (TTS) model is unloaded."
+  (interactive)
+  (e6/readback--render (e6/readback--build-queue)))
+
+(defun e6/readback-render-buffer ()
+  "Render the ENTIRE file to audio, unload the TTS model, then play (M-<f4>)."
+  (interactive)
+  (e6/readback--render (e6/readback--build-queue (point-min) (point-max))))
+
+(defun e6/readback-next-paragraph ()
+  "Skip to the next paragraph in the read-through, else move point forward."
+  (interactive)
+  (if (and e6/readback--playing e6/readback--units)
+      (progn (setq e6/readback--pos
+                   (min (1- (length e6/readback--units)) (1+ e6/readback--pos)))
+             (e6/readback--play-unit))
+    (forward-paragraph)))
+
+(defun e6/readback-prev-paragraph ()
+  "Skip to the previous paragraph in the read-through, else move point back."
+  (interactive)
+  (if (and e6/readback--playing e6/readback--units)
+      (progn (setq e6/readback--pos (max 0 (1- e6/readback--pos)))
+             (e6/readback--play-unit))
+    (backward-paragraph)))
 
 (defun e6/readback-stop ()
   "Stop the read-through entirely (M-<f9>)."
@@ -2336,16 +2383,19 @@ Enabling starts the model server; disabling tears everything down.
 #+begin_src emacs-lisp
 (defvar e6/readback-mode-map
   (let ((m (make-sparse-keymap)))
-    (define-key m (kbd "<f4>")   #'e6/readback-render-section)
-    (define-key m (kbd "<f5>")   #'e6/readback-cycle-voice)
-    (define-key m (kbd "<f6>")   #'e6/readback-toggle-language)
-    (define-key m (kbd "<f7>")   #'e6/readback-play)
-    (define-key m (kbd "<f8>")   #'e6/readback-dictate-toggle)
-    (define-key m (kbd "<f9>")   #'e6/readback-pause-toggle)
-    (define-key m (kbd "M-<f9>") #'e6/readback-stop)
-    (define-key m (kbd "<f10>")  #'e6/readback-speed-down)
-    (define-key m (kbd "<f12>")  #'e6/readback-speed-up)
-    (define-key m (kbd "M-<f12>") #'e6/readback-speed-reset)
+    (define-key m (kbd "<f4>")    #'e6/readback-render-section)
+    (define-key m (kbd "M-<f4>")  #'e6/readback-render-buffer)
+    (define-key m (kbd "<f5>")    #'e6/readback-cycle-voice)
+    (define-key m (kbd "<f6>")    #'e6/readback-toggle-language)
+    (define-key m (kbd "<f7>")    #'e6/readback-play)
+    (define-key m (kbd "<f8>")    #'e6/readback-dictate-toggle)
+    (define-key m (kbd "<f9>")    #'e6/readback-pause-toggle)
+    (define-key m (kbd "M-<f9>")  #'e6/readback-stop)
+    (define-key m (kbd "<f10>")   #'e6/readback-prev-paragraph)
+    (define-key m (kbd "<f12>")   #'e6/readback-next-paragraph)
+    (define-key m (kbd "M-<f10>") #'e6/readback-speed-down)
+    (define-key m (kbd "M-<f12>") #'e6/readback-speed-up)
+    (define-key m (kbd "C-<f12>") #'e6/readback-speed-reset)
     m)
   "Keymap for `e6/readback-mode'.")
 

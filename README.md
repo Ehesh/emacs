@@ -121,13 +121,14 @@ lives at `SPC t p`. Edit the keywords/dashboard in the *Org base* block.
 **Parakeet v3** transcribes into Org `# …` comment lines (which don't export to
 Word). Enabling starts two warm model servers; disabling frees them.
 
-**In-mode keys:** `<f4>` render whole section then unload the TTS model · `<f5>`
-cycle voice · `<f6>` language en/es · `<f7>` read to section end (model stays hot)
-· `<f8>` dictate (once = pause+record, again = stop+insert+resume) · `<f9>`
-pause/resume · `M-<f9>` stop · `<f10>`/`<f12>` slower/faster · `M-<f12>` reset.
-A header-line shows `🎙 Dictation — EN/ES`. Works in **Org, Markdown and QMD**
-(sections split on headings); comments use `# …` in Org and `<!-- … -->` in
-Markdown/QMD so they never export.
+**In-mode keys:** `<f4>` render section + unload TTS · `M-<f4>` render whole file
++ unload · `<f5>` cycle voice · `<f6>` language en/es · `<f7>` read to section end
+(model hot) · `<f8>` dictate (once = pause+record, again = stop+insert+resume) ·
+`<f9>` pause/resume · `M-<f9>` stop · `<f10>`/`<f12>` previous/next paragraph ·
+`M-<f10>`/`M-<f12>` slower/faster · `C-<f12>` reset. A header-line shows
+`🎙 Dictation — EN/ES`. Works in **Org, Markdown and QMD** (sections split on
+headings); comments use `# …` in Org and `<!-- … -->` in Markdown/QMD so they
+never export.
 
 **Setup with uv:**
 

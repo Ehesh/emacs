@@ -39,6 +39,7 @@ which-key, which shows only the top-level =SPC= keys.)
 | =SPC /=   | Search this buffer                                       |
 | =SPC c=   | Capture a note (menu: i/f/p/b)                           |
 | =SPC k=   | Kill current buffer                                      |
+| =SPC j=   | Jump to the active minibuffer (also =C-c j=)             |
 | =SPC \vert= | Send region/buffer to your AI CLI (pi)                 |
 | =SPC p=   | *Project* commands (switch/find/grep…)                   |
 | =SPC b=   | Buffers menu (switch, *save* =s*, *kill* =k*, revert…)   |
@@ -191,15 +192,17 @@ loads the speech models, disabling frees them.
 
 | Key       | Action                                                          |
 |-----------+-----------------------------------------------------------------|
-| =<f4>=    | Render the whole section to audio, then unload the TTS model     |
-| =<f5>=    | Cycle the voice (for the current language)                      |
-| =<f6>=    | Switch language English ⇄ Spanish                               |
-| =<f7>=    | Read from the current paragraph to the section end (model stays hot) |
+| =<f4>=    | Render this section to audio, then unload the TTS model          |
+| =M-<f4>=  | Render the *whole file* to audio, then unload the TTS model      |
+| =<f5>=    | Cycle the voice (for the current language)                       |
+| =<f6>=    | Switch language English ⇄ Spanish                                |
+| =<f7>=    | Read from the current paragraph to the section end (model hot)   |
 | =<f8>=    | Dictate: once = *pause + record*, again = *stop + insert + resume* |
-| =<f9>=    | Pause / resume                                                  |
-| =M-<f9>=  | Stop the read-through                                           |
-| =<f10>= / =<f12>= | Slower / faster (0.5×–3.0×, remembered)                 |
-| =M-<f12>= | Reset speed to 1.0×                                             |
+| =<f9>=    | Pause / resume                                                   |
+| =M-<f9>=  | Stop the read-through                                            |
+| =<f10>= / =<f12>= | Previous / next paragraph                               |
+| =M-<f10>= / =M-<f12>= | Slower / faster (0.5×–3.0×, remembered)             |
+| =C-<f12>= | Reset speed to 1.0×                                              |
 
 A live *header-line* at the top shows =🎙 Dictation — EN/ES= while the mode is on.
 Comments *stack* below existing ones and use the right format per file: Org
@@ -210,6 +213,37 @@ Comments *stack* below existing ones and use the right format per file: Org
 (snappiest for back-and-forth); =<f4>= renders the whole section once and then
 *frees the TTS model* (lighter if you're reading a file just once). Spanish uses
 =lola=, English =alba= (cycle with =<f5>=).
+
+* Windows, panes & jumping around
+:PROPERTIES:
+:CUSTOM_ID: windows
+:END:
+
+Emacs calls the split areas *windows* (what other apps call panes); the things
+they show are *buffers*. Quick vocabulary: splitting makes more windows;
+switching buffers changes what a window shows.
+
+** Split & close
+- =SPC w= opens the windows menu: =s= split below, =v= split right, =o= other
+  window, =d= delete this window, =m= maximize (only this one), ~=~ balance.
+- Or the classic keys: =C-x 2= split below, =C-x 3= split right, =C-x 1= only
+  this window, =C-x 0= close this window.
+
+** Jump between windows (the Alt-Tab you wanted)
+- =C-x o= (or =SPC w o=) = *other window* — cycles focus to the next window.
+  With two windows open it just toggles between them, like Alt-Tab.
+- =q= does *not* switch windows — in read-only/special buffers (help, dired,
+  magit) =q= buries/closes that buffer. That's probably what confused you.
+
+** Switch what a window shows (buffers)
+- =SPC ,= (=consult-buffer=) or =C-x b= — pick another buffer to display here.
+- =SPC k= kills the current buffer; =C-x C-s= saves it.
+
+** Jump to a prompt / cancel a command
+- Started a command and the prompt is waiting but you clicked away? =C-c j=
+  (or =SPC j=) jumps back to the active minibuffer.
+- To *cancel* a command from anywhere: =C-]= (abort). Inside the minibuffer,
+  =C-g= also cancels.
 
 * Setting up a project
 :PROPERTIES:
