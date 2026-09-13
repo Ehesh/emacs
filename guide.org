@@ -158,15 +158,16 @@ the source file — good for stitching a thesis from section files.
 
 =SPC l= opens the launch/convert menu.
 
-- *Convert the current file:* =w= → Word, =h= → HTML, =p= → PDF. Org/Markdown go
-  through *pandoc* (PDF via Typst — no LaTeX needed); =.qmd= goes through
-  *Quarto*. =t= compiles a =.typ= file with Typst directly.
-- *marimo:* =SPC l m= launches a marimo notebook *in a directory you pick, using
-  that directory's uv environment* (=uv run marimo edit=). It runs as an Emacs
-  child (see =SPC l P=), so quitting Emacs stops it.
+- *Convert the current file:* =w= → Word, =h= → HTML, =p= → PDF. Org/Markdown use
+  *Quarto's bundled pandoc* (=quarto pandoc=; PDF via Typst — no LaTeX, no
+  separate pandoc needed); =.qmd= uses =quarto render=. =t= compiles a =.typ=
+  with Typst.
+- *marimo (per-project):* =SPC l m= launches a marimo notebook *in a directory
+  you pick, using that directory's uv environment* (=uv run marimo edit=). Runs
+  as an Emacs child (=SPC l P=), so quitting Emacs stops it.
 - *Services:* =SPC l s= opens *prodigy* — start/stop/see status of long-running
-  services (marimo on :2718, BentoPDF on :3000). =s= start, =S= stop, =r=
-  restart, =b= open its URL (shown in the name).
+  services (marimo on :2718 — needs =uv tool install marimo= once; BentoPDF on
+  :3000). =s= start, =S= stop, =r= restart, =b= open its URL (shown in the name).
 - *What did I leave running?* =SPC l s= (services) and =SPC l P=
   (=list-processes=, all Emacs child processes). Everything launched this way
   dies when Emacs quits.
@@ -180,8 +181,8 @@ Reads *continuously from the current paragraph to the end of the section*
 (pocket-tts), synthesizing ahead so it doesn't pause between paragraphs. Pause to
 *speak a comment*: it's transcribed (Parakeet v3) and inserted as an Org =#=
 comment under the paragraph being read, then reading resumes. Comments don't
-export to Word. Enable on an =.org= file with =SPC t R=; enabling loads the
-speech models, disabling frees them.
+export to Word. Works in *Org, Markdown and QMD*. Enable with =SPC t R=; enabling
+loads the speech models, disabling frees them.
 
 ** Controls (while the mode is on)
 :PROPERTIES:
@@ -190,16 +191,25 @@ speech models, disabling frees them.
 
 | Key       | Action                                                          |
 |-----------+-----------------------------------------------------------------|
+| =<f4>=    | Render the whole section to audio, then unload the TTS model     |
 | =<f5>=    | Cycle the voice (for the current language)                      |
 | =<f6>=    | Switch language English ⇄ Spanish                               |
-| =<f7>=    | Read from the current paragraph to the end of the section       |
+| =<f7>=    | Read from the current paragraph to the section end (model stays hot) |
 | =<f8>=    | Dictate: once = *pause + record*, again = *stop + insert + resume* |
-| =<f9>=    | Stop reading                                                    |
+| =<f9>=    | Pause / resume                                                  |
+| =M-<f9>=  | Stop the read-through                                           |
 | =<f10>= / =<f12>= | Slower / faster (0.5×–3.0×, remembered)                 |
 | =M-<f12>= | Reset speed to 1.0×                                             |
 
-Comments *stack* below any existing ones on that paragraph. Spanish uses the
-=lola= voice; English =alba= (cycle with =<f5>=; edit the lists in Config.org).
+A live *header-line* at the top shows =🎙 Dictation — EN/ES= while the mode is on.
+Comments *stack* below existing ones and use the right format per file: Org
+=# …=, Markdown/QMD =<!-- … -->= (both invisible to Word export). It works in
+*Org, Markdown and QMD* — sections split on headings (Org =*=, Markdown/QMD =#=).
+
+*Two ways to read:* =<f7>= keeps the model in memory and synthesizes as it goes
+(snappiest for back-and-forth); =<f4>= renders the whole section once and then
+*frees the TTS model* (lighter if you're reading a file just once). Spanish uses
+=lola=, English =alba= (cycle with =<f5>=).
 
 * Setting up a project
 :PROPERTIES:

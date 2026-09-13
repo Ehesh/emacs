@@ -82,17 +82,18 @@ For Typst syntax you also need the tree-sitter grammar:
 
 `SPC l` opens a menu to **convert the current file** and run/track tools:
 
-- **Convert:** `w` Word · `h` HTML · `p` PDF. Org/Markdown go through **pandoc**
-  (PDF via **Typst**, no LaTeX); `.qmd` goes through **Quarto**. `t` compiles a
-  `.typ` with `typst`. (Quarto can't render `.org` — that's why Org uses pandoc.)
+- **Convert:** `w` Word · `h` HTML · `p` PDF. Org/Markdown use **Quarto's bundled
+  pandoc** (`quarto pandoc`; PDF via **Typst**, no LaTeX and no separate pandoc);
+  `.qmd` uses `quarto render`. `t` compiles a `.typ` with `typst`. (Quarto can't
+  *render* `.org`, but `quarto pandoc` converts it fine.)
 - **Linguistics:** if you set `e6/pandoc-ling-filter` to your `pandoc-ling.lua`,
   pandoc exports run through it so linguistic examples number/cross-reference.
 - **marimo:** `SPC l m` launches a notebook **in a directory you choose, using
   that directory's uv env** (`uv run marimo edit`).
 - **Services (`SPC l s`, prodigy):** `s` start, `S` stop, `r` restart, `b` open
-  its URL (shown in the service name). Ships with **marimo** (:2718, via
-  `uv run` so *stop actually stops it*) and **BentoPDF** (:3000, `podman run
-  --replace …`, no `-d`, so prodigy owns the container).
+  its URL (shown in the service name). Ships with **marimo** (:2718 — run the
+  `marimo` binary directly so Stop works; `uv tool install marimo` once) and
+  **BentoPDF** (:3000, `podman run --replace …`, no `-d`, so prodigy owns it).
 - `SPC l P` → `list-processes` (all Emacs child processes).
 
 Anything launched this way is an Emacs child process, so it dies when you quit
@@ -120,10 +121,13 @@ lives at `SPC t p`. Edit the keywords/dashboard in the *Org base* block.
 **Parakeet v3** transcribes into Org `# …` comment lines (which don't export to
 Word). Enabling starts two warm model servers; disabling frees them.
 
-**In-mode keys:** `<f7>` read paragraph/region · `<f8>` dictate (once =
-pause+record, again = stop+insert) · `<f9>` stop · `<f6>` language en/es ·
-`<f10>`/`<f12>` slower/faster · `M-<f12>` reset speed. Comments stack under the
-paragraph.
+**In-mode keys:** `<f4>` render whole section then unload the TTS model · `<f5>`
+cycle voice · `<f6>` language en/es · `<f7>` read to section end (model stays hot)
+· `<f8>` dictate (once = pause+record, again = stop+insert+resume) · `<f9>`
+pause/resume · `M-<f9>` stop · `<f10>`/`<f12>` slower/faster · `M-<f12>` reset.
+A header-line shows `🎙 Dictation — EN/ES`. Works in **Org, Markdown and QMD**
+(sections split on headings); comments use `# …` in Org and `<!-- … -->` in
+Markdown/QMD so they never export.
 
 **Setup with uv:**
 

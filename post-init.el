@@ -125,6 +125,16 @@
          ("s"   . dirvish-quicksort)
          ("f"   . dirvish-file-info-menu)))
 
+;; Wrapper so the menu entry is always a valid command (dirvish-side lives in a
+;; module that isn't always autoloaded, and versions differ between machines).
+(defun e6/dirvish-side ()
+  "Open the Dirvish sidebar, loading it if needed."
+  (interactive)
+  (or (require 'dirvish-side nil t) (require 'dirvish nil t))
+  (if (fboundp 'dirvish-side)
+      (call-interactively 'dirvish-side)
+    (user-error "dirvish-side is unavailable in this dirvish version")))
+
 (use-package project
   :ensure nil
   :config
@@ -198,7 +208,14 @@
 (use-package meow
   :demand t
   :init
-  (setq meow-use-clipboard t)
+  (setq meow-use-clipboard t
+        ;; Free c/g/h/m as leader keys. By default meow's keypad reserves them
+        ;; (c=C-c, h=C-h, x=C-x, m=Meta, g=C-M-), which hijacks SPC c/g/h/m
+        ;; before our menus. Keep C-x on SPC x; press real Ctrl/Meta for the
+        ;; rest (they pass through in normal state).
+        meow-keypad-start-keys '((?x . ?x))
+        meow-keypad-meta-prefix nil
+        meow-keypad-ctrl-meta-prefix nil)
   :config
   (defun meow-setup ()
     (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -296,7 +313,7 @@ REPLACE the region/buffer in place."
     ("f" "Find file"     find-file)
     ("r" "Recent file"   consult-recent-file)
     ("d" "Dirvish"       dired)
-    ("D" "Dirvish sidebar" dirvish-side)]
+    ("D" "Dirvish sidebar" e6/dirvish-side)]
    ["Save"
     ("s" "Save"          save-buffer)
     ("S" "Save as"       write-file)]])
@@ -571,11 +588,21 @@ REPLACE the region/buffer in place."
   (org-pomodoro-long-break-length 15)
   (org-pomodoro-manual-break t))
 
+;; Wrappers so the menu entries are always valid commands (org-pomodoro-kill
+;; isn't autoloaded on its own).
+(defun e6/pomodoro-start ()
+  "Start / interact with a Pomodoro on the current task."
+  (interactive) (require 'org-pomodoro) (call-interactively 'org-pomodoro))
+(defun e6/pomodoro-stop ()
+  "Stop the running Pomodoro."
+  (interactive) (require 'org-pomodoro)
+  (when (fboundp 'org-pomodoro-kill) (org-pomodoro-kill)))
+
 (transient-define-prefix e6/timer-menu ()
   "Timers."
   [["Pomodoro (25/5)"
-    ("p" "Start (on task)"   org-pomodoro)
-    ("k" "Stop"              org-pomodoro-kill)]
+    ("p" "Start (on task)"   e6/pomodoro-start)
+    ("k" "Stop"              e6/pomodoro-stop)]
    ["Countdown timer"
     ("s" "Set countdown"     org-timer-set-timer)
     ("SPC" "Pause / resume"  org-timer-pause-or-continue)
@@ -663,6 +690,7 @@ REPLACE the region/buffer in place."
   "Path to the BibTeX file (export from Zotero).")
 
 (use-package citar
+  :commands (citar-open citar-open-entry citar-insert-citation)
   :custom
   (citar-bibliography (list e6/bibliography))
   (citar-notes-paths (list e6/notes-directory))
@@ -803,10 +831,11 @@ PDF goes through Typst (no LaTeX needed). pandoc-ling filter added if set."
                      (format " --lua-filter %s"
                              (shell-quote-argument e6/pandoc-ling-filter))
                    ""))
+           ;; No standalone pandoc — use quarto's bundled one via `quarto pandoc`.
            (cmd (if (string= ext "qmd")
                     (format "quarto render %s --to %s"
                             (shell-quote-argument f) target)
-                  (format "pandoc %s -o %s%s%s"
+                  (format "quarto pandoc %s -o %s%s%s"
                           (shell-quote-argument f)
                           (shell-quote-argument out)
                           (if (string= target "pdf") " --pdf-engine=typst" "")
@@ -863,10 +892,11 @@ PDF goes through Typst (no LaTeX needed). pandoc-ling filter added if set."
   ;; on a running service to open it.
   (prodigy-define-service
     :name "marimo  ·  http://localhost:2718"
-    ;; `uv run' forwards signals to its child, so stopping the service actually
-    ;; stops marimo (uvx did not); --with pulls marimo into an ephemeral env.
-    :command "uv"
-    :args '("run" "--with" "marimo" "marimo" "edit" "--headless" "--port" "2718")
+    ;; Run the marimo binary DIRECTLY (install once: `uv tool install marimo`)
+    ;; so prodigy's process IS marimo — Stop then actually stops it. A `uv run'
+    ;; wrapper left marimo orphaned when the wrapper was killed.
+    :command "marimo"
+    :args '("edit" "--headless" "--port" "2718")
     :cwd "~/"
     :url "http://localhost:2718"
     :stop-signal 'sigint
@@ -1023,16 +1053,43 @@ with no manual venv). Other options:
 (defvar e6/readback--pos 0 "Index into `e6/readback--units' currently playing.")
 (defvar e6/readback--playing nil "Non-nil while a read-through is active.")
 
+(defun e6/readback--at-heading-p ()
+  "Non-nil if point is on a heading (Org `*' or Markdown/QMD `#')."
+  (if (derived-mode-p 'org-mode)
+      (org-at-heading-p)
+    (looking-at-p "^#+[ \t]")))
+
+(defun e6/readback--heading-title ()
+  "Clean title of the heading at point."
+  (if (derived-mode-p 'org-mode)
+      (org-get-heading t t t t)
+    (save-excursion
+      (beginning-of-line)
+      (if (looking-at "^#+[ \t]+\\(.*?\\)[ \t]*$")
+          (match-string-no-properties 1) ""))))
+
+(defun e6/readback--comment-re ()
+  "Regexp for an existing dictation comment line in this buffer.
+Org uses `# …'; Markdown/QMD use HTML comments `<!-- … -->' so they don't
+export and don't collide with Markdown `#' headings."
+  (if (derived-mode-p 'org-mode) "^[ \t]*#\\(?: \\|$\\)" "^[ \t]*<!--"))
+
+(defun e6/readback--format-comment (line)
+  "Wrap LINE as a non-exporting comment for this buffer's format."
+  (if (derived-mode-p 'org-mode)
+      (concat e6/readback-comment-prefix line)
+    (format "<!-- %s -->" line)))
+
 (defun e6/readback--para-bounds ()
-  "Return (BEG . END) of the current paragraph's prose, excluding # comments."
+  "Return (BEG . END) of the current paragraph's prose, excluding comments."
   (save-excursion
-    (let (beg end)
+    (let ((cre (e6/readback--comment-re)) beg end)
       (backward-paragraph)
       (skip-chars-forward "\n")
       (setq beg (point))
       (while (and (not (eobp))
                   (not (looking-at-p "[ \t]*$"))
-                  (not (looking-at-p "[ \t]*#\\( \\|$\\)")))
+                  (not (looking-at-p cre)))
         (forward-line 1))
       (setq end (point))
       (cons beg end))))
@@ -1043,18 +1100,19 @@ with no manual venv). Other options:
     (goto-char (or (and (markerp e6/readback--anchor)
                         (marker-position e6/readback--anchor))
                    (cdr (e6/readback--para-bounds))))
-    (while (and (not (eobp)) (looking-at-p "[ \t]*#\\( \\|$\\)"))
-      (forward-line 1))
+    (let ((cre (e6/readback--comment-re)))
+      (while (and (not (eobp)) (looking-at-p cre))
+        (forward-line 1)))
     (point)))
 
 (defun e6/readback--insert-comment (text)
-  "Insert TEXT as Org comment line(s), stacked after any existing ones."
+  "Insert TEXT as comment line(s), stacked after any existing ones."
   (let ((pt (e6/readback--comment-insert-point)))
     (save-excursion
       (goto-char pt)
       (unless (bolp) (insert "\n"))
       (dolist (line (split-string (string-trim text) "\n"))
-        (insert e6/readback-comment-prefix line "\n")))))
+        (insert (e6/readback--format-comment line) "\n")))))
 
 ;; --- pocket-tts warm server -------------------------------------------------
 (defun e6/readback--pocket-lang ()
@@ -1161,7 +1219,8 @@ Sets UNIT's :wav and :state (ready or error)."
 
 ;; --- sectional reading pipeline ---------------------------------------------
 (defun e6/readback--section-end ()
-  "End position of the region to read: current Org subtree, else end of buffer."
+  "End of the region to read: current Org subtree; else to the next
+Markdown/QMD heading; else end of buffer."
   (save-excursion
     (cond
      ((and (derived-mode-p 'org-mode) (org-before-first-heading-p))
@@ -1170,32 +1229,36 @@ Sets UNIT's :wav and :state (ready or error)."
           (point-max)))
      ((derived-mode-p 'org-mode)
       (org-back-to-heading t) (org-end-of-subtree t t))
-     (t (point-max)))))
+     (t
+      (end-of-line)
+      (or (and (re-search-forward "^#+[ \t]" nil t) (line-beginning-position))
+          (point-max))))))
 
 (defun e6/readback--build-queue ()
   "Collect readable units from the current paragraph to the section end."
   (let ((start (save-excursion (backward-paragraph) (skip-chars-forward "\n") (point)))
         (end   (e6/readback--section-end))
+        (cre   (e6/readback--comment-re))
         (units '()))
     (save-excursion
       (goto-char start)
       (while (< (point) end)
         (cond
-         ((looking-at-p "[ \t]*$") (forward-line 1))                 ; blank
-         ((and (derived-mode-p 'org-mode) (org-at-heading-p))        ; heading
-          (let ((b (point)) (title (org-get-heading t t t t)))
+         ((looking-at-p "[ \t]*$") (forward-line 1))          ; blank
+         ((e6/readback--at-heading-p)                         ; heading (Org * / MD #)
+          (let ((b (point)) (title (e6/readback--heading-title)))
             (end-of-line)
             (push (list :beg b :end (copy-marker (point)) :text (or title "")
                         :wav nil :state 'pending)
                   units)
             (forward-line 1)))
-         ((looking-at-p "[ \t]*#\\( \\|$\\)") (forward-line 1))       ; existing comment
-         (t                                                          ; prose paragraph
+         ((looking-at-p cre) (forward-line 1))                ; existing comment
+         (t                                                   ; prose paragraph
           (let ((b (point)))
             (while (and (< (point) end)
                         (not (looking-at-p "[ \t]*$"))
-                        (not (looking-at-p "[ \t]*#\\( \\|$\\)"))
-                        (not (and (derived-mode-p 'org-mode) (org-at-heading-p))))
+                        (not (looking-at-p cre))
+                        (not (e6/readback--at-heading-p)))
               (forward-line 1))
             (push (list :beg b :end (copy-marker (point))
                         :text (string-trim (buffer-substring-no-properties b (point)))
@@ -1272,17 +1335,47 @@ read just that region."
   (if (null e6/readback--units)
       (progn (setq e6/readback--playing nil) (message "Nothing to read."))
     (when (eq e6/readback-tts-engine 'pocket) (e6/readback--start-tts-server))
-    (message "Reading %d block(s) (%s, %.2fx)…  <f8> comment  <f9> stop"
+    (message "Reading %d block(s) (%s, %.2fx)…  <f8> comment  <f9> pause  M-<f9> stop"
              (length e6/readback--units) e6/readback-language e6/readback-speed)
     (e6/readback--play-unit)))
 
+(defun e6/readback-render-section ()
+  "Render the whole section to audio up front, unload the TTS model, then play.
+Two modes of use: <f7> keeps the model hot and synthesizes on demand; this one
+does it once and frees the TTS model (lighter when you only read a file once).
+Dictation/STT still works — only the speech (TTS) model is unloaded."
+  (interactive)
+  (e6/readback-stop)
+  (setq e6/readback--units (e6/readback--build-queue)
+        e6/readback--pos 0
+        e6/readback--playing t)
+  (if (null e6/readback--units)
+      (progn (setq e6/readback--playing nil) (message "Nothing to read."))
+    (when (eq e6/readback-tts-engine 'pocket) (e6/readback--start-tts-server))
+    (message "Rendering %d block(s) to audio…" (length e6/readback--units))
+    (let ((remaining (length e6/readback--units)))
+      (dolist (u e6/readback--units)
+        (e6/readback--synth-async
+         u (lambda (_u)
+             (setq remaining (1- remaining))
+             (when (<= remaining 0)
+               (e6/readback--stop-tts-server)   ; unload the TTS model
+               (message "Audio ready; TTS model unloaded. Playing…")
+               (e6/readback--play-unit))))))))
+
 (defun e6/readback-stop ()
-  "Stop the read-through."
+  "Stop the read-through entirely (M-<f9>)."
   (interactive)
   (setq e6/readback--playing nil)
   (when (process-live-p e6/readback--play-proc)
     (set-process-sentinel e6/readback--play-proc #'ignore)
     (delete-process e6/readback--play-proc)))
+
+(defun e6/readback-pause-toggle ()
+  "Pause or resume playback, keeping the read-through position (<f9>)."
+  (interactive)
+  (e6/readback--mpv-cmd "{\"command\":[\"cycle\",\"pause\"]}")
+  (message "readback: pause toggled"))
 
 (defun e6/readback-toggle-language ()
   "Toggle TTS language between English and Spanish (restarts pocket-tts)."
@@ -1356,16 +1449,30 @@ read just that region."
 
 (defvar e6/readback-mode-map
   (let ((m (make-sparse-keymap)))
+    (define-key m (kbd "<f4>")   #'e6/readback-render-section)
     (define-key m (kbd "<f5>")   #'e6/readback-cycle-voice)
     (define-key m (kbd "<f6>")   #'e6/readback-toggle-language)
     (define-key m (kbd "<f7>")   #'e6/readback-play)
     (define-key m (kbd "<f8>")   #'e6/readback-dictate-toggle)
-    (define-key m (kbd "<f9>")   #'e6/readback-stop)
+    (define-key m (kbd "<f9>")   #'e6/readback-pause-toggle)
+    (define-key m (kbd "M-<f9>") #'e6/readback-stop)
     (define-key m (kbd "<f10>")  #'e6/readback-speed-down)
     (define-key m (kbd "<f12>")  #'e6/readback-speed-up)
     (define-key m (kbd "M-<f12>") #'e6/readback-speed-reset)
     m)
   "Keymap for `e6/readback-mode'.")
+
+;; nano-modeline doesn't show minor-mode lighters, so we show a live status in a
+;; buffer-local header-line while the mode is on (shows EN/ES).
+(defvar-local e6/readback--saved-header-line :unset
+  "Header-line to restore when `e6/readback-mode' turns off.")
+
+(defun e6/readback--header ()
+  "Header-line string shown while `e6/readback-mode' is on."
+  (propertize (format " 🎙 Dictation — %s%s "
+                      (upcase (symbol-name e6/readback-language))
+                      (if (bound-and-true-p e6/readback--recording) "  ● REC" ""))
+              'face 'mode-line-emphasis))
 
 (define-minor-mode e6/readback-mode
   "Read paragraphs aloud (pocket-tts/Piper) and dictate Org-comment notes (Parakeet).
@@ -1377,8 +1484,13 @@ Enabling starts the model servers; disabling kills them to free memory."
           (progn (setq e6/readback-mode nil)
                  (user-error "e6/readback-mode is Linux-only"))
         (e6/readback--start-server)       ; STT (Parakeet)
-        (e6/readback--start-tts-server))  ; TTS (pocket-tts), if that engine
-    ;; teardown: kill both servers, playback, recording; free the model memory.
+        (e6/readback--start-tts-server)   ; TTS (pocket-tts), if that engine
+        (setq e6/readback--saved-header-line header-line-format
+              header-line-format '(:eval (e6/readback--header))))
+    ;; teardown: restore header-line; kill both servers, playback, recording.
+    (unless (eq e6/readback--saved-header-line :unset)
+      (setq header-line-format e6/readback--saved-header-line
+            e6/readback--saved-header-line :unset))
     (e6/readback-stop)
     (when (process-live-p e6/readback--rec-proc) (interrupt-process e6/readback--rec-proc))
     (when (process-live-p e6/readback--stt-proc) (delete-process e6/readback--stt-proc))
