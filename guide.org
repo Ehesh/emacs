@@ -40,6 +40,7 @@ which-key, which shows only the top-level =SPC= keys.)
 | =SPC c=   | Capture a note (menu: i/f/p/b)                           |
 | =SPC k=   | Kill current buffer                                      |
 | =SPC j=   | Jump to the active minibuffer (also =C-c j=)             |
+| =SPC o=   | Other window — quick Alt-Tab (also =M-o=)                |
 | =SPC \vert= | Send region/buffer to your AI CLI (pi)                 |
 | =SPC p=   | *Project* commands (switch/find/grep…)                   |
 | =SPC b=   | Buffers menu (switch, *save* =s*, *kill* =k*, revert…)   |
@@ -211,8 +212,9 @@ Comments *stack* below existing ones and use the right format per file: Org
 
 *Two ways to read:* =<f7>= keeps the model in memory and synthesizes as it goes
 (snappiest for back-and-forth); =<f4>= renders the whole section once and then
-*frees the TTS model* (lighter if you're reading a file just once). Spanish uses
-=lola=, English =alba= (cycle with =<f5>=).
+*frees the TTS model* (lighter if you're reading a file just once). *Spanish is
+the default* (voice =lola=); =<f6>= switches to English (=alba=), =<f5>= cycles
+voices.
 
 * Windows, panes & jumping around
 :PROPERTIES:
@@ -230,8 +232,9 @@ switching buffers changes what a window shows.
   this window, =C-x 0= close this window.
 
 ** Jump between windows (the Alt-Tab you wanted)
-- =C-x o= (or =SPC w o=) = *other window* — cycles focus to the next window.
-  With two windows open it just toggles between them, like Alt-Tab.
+- =SPC o= or =M-o= = *other window* — the quick Alt-Tab: jumps to the next
+  window with no menu. (=C-x o= and =SPC w o= do the same.) With two windows
+  open it just toggles between them.
 - =q= does *not* switch windows — in read-only/special buffers (help, dired,
   magit) =q= buries/closes that buffer. That's probably what confused you.
 

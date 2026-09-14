@@ -333,7 +333,7 @@ REPLACE the region/buffer in place."
     ("s" "Below" split-window-below)
     ("v" "Right" split-window-right)]
    ["Move / Remove"
-    ("o" "Other"   other-window :transient t)
+    ("o" "Other"   other-window)
     ("d" "Delete"  delete-window)
     ("m" "Maximize" delete-other-windows)
     ("=" "Balance" balance-windows)]])
@@ -374,6 +374,9 @@ REPLACE the region/buffer in place."
     ("a" "Apropos"  apropos-command)
     ("i" "Info"     info)]])
 
+;; Direct window switch (skips the windows menu), works in any state.
+(keymap-global-set "M-o" #'other-window)
+
 (with-eval-after-load 'meow
   (meow-leader-define-key
    ;; Quick access
@@ -386,6 +389,7 @@ REPLACE the region/buffer in place."
    '("c"   . org-capture)
    '("k"   . kill-current-buffer)
    '("j"   . e6/switch-to-minibuffer)
+   '("o"   . other-window)
    '("|"   . e6/pipe-to-ai)
    ;; Menus
    '("p"   . e6/project-menu)
@@ -1048,7 +1052,8 @@ with no manual venv). Other options:
 (defcustom e6/readback-speed 1.0
   "Playback speed multiplier for read-aloud." :type 'number :group 'e6-readback)
 
-(defvar e6/readback-language 'en "Current TTS language (en or es).")
+(defvar e6/readback-language 'es
+  "Current TTS language (es or en). Default Spanish; toggle live with <f6>.")
 (defvar e6/readback--stt-proc nil)
 (defvar e6/readback--tts-proc nil "pocket-tts serve process.")
 (defvar e6/readback--tts-lang nil "Language the running TTS server was started with.")
